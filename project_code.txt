@@ -4,8 +4,19 @@
     .gitattributes
     .gitignore
     dump_context.py
+    export_presets.cfg
+    index.audio.position.worklet.js
+    index.audio.worklet.js
+    index.html
+    index.js
+    index.pck
+    index.wasm
     project.godot
+    project_code.txt
+    project_scenes.txt
     README.md
+    .github/
+        workflows/
     art/
         floor/
         player/
@@ -24,7 +35,6 @@
         player.gd
         screen_fader.gd
         ui.gd
-        world.gd
 
 ==== CODE FILES ====
 
@@ -34,14 +44,18 @@ extends Node
 class_name GameManager
 
 @export var base_speed: float = 0.0
-@export var start_speed: float = 180.0
-@export var accel: float = 220.0
-@export var max_speed: float = 650.0
+@export var start_speed: float = 250.0
+@export var max_speed: float = 950.0
+
+@export var accel_speed_factor: float = 0.4
 
 @export var penalty_flat: float = 160.0
 @export var penalty_speed_fraction: float = 0.22
 @export var hit_impact_multiplier: float = 0.70
 @export var min_speed_floor: float = 80.0
+
+@export var post_hit_suppression_time: float = 2.5 # Seconds before acceleration restores
+var _suppression_timer: float = 0.0
 
 var current_speed: float = 0.0
 var running: bool = false
@@ -50,19 +64,6 @@ var can_start: bool = true
 var current_score: float = 0.0
 var highscore: float = 0.0
 
-# ---------------- DEBUG ----------------
-@export var dbg_enabled: bool = true
-@export var dbg_print_every_frames: int = 30
-@export var dbg_speed_drop_threshold: float = 40.0 # px/s drop considered "suspicious"
-
-var _dbg_frame: int = 0
-var _dbg_prev_speed: float = 0.0
-var _dbg_last_penalty_extra: float = 0.0
-var _dbg_penalty_calls: int = 0
-var _dbg_last_penalty_time: float = -999.0
-var _dbg_time: float = 0.0
-# --------------------------------------
-
 func _ready() -> void:
 	add_to_group("game_manager")
 	current_speed = base_speed
@@ -70,53 +71,25 @@ func _ready() -> void:
 	can_start = true
 	_load_highscore()
 
-	_dbg_prev_speed = current_speed
-	if dbg_enabled:
-		print("[GM] ready base_speed=", base_speed, " start_speed=", start_speed, " accel=", accel, " max_speed=", max_speed)
-
 func _physics_process(delta: float) -> void:
-	_dbg_time += delta
-	_dbg_frame += 1
-
-	if not running:
-		if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0):
-			print("[GM] running=false speed=", snappedf(current_speed, 0.01), " can_start=", can_start)
-		_dbg_prev_speed = current_speed
-		return
-
 	# score
 	current_score += current_speed * delta * 0.1
 
-	# accelerate
-	current_speed += accel * delta
-	current_speed = min(current_speed, max_speed)
-
-	# suspicious speed drop detector
-	if dbg_enabled:
-		var drop := _dbg_prev_speed - current_speed
-		if drop > dbg_speed_drop_threshold:
-			print("[GM][DROP] speed dropped by ", snappedf(drop, 0.01),
-				" prev=", snappedf(_dbg_prev_speed, 0.01),
-				" now=", snappedf(current_speed, 0.01),
-				" penalty_calls=", _dbg_penalty_calls,
-				" last_penalty_extra=", _dbg_last_penalty_extra,
-				" last_penalty_age=", snappedf(_dbg_time - _dbg_last_penalty_time, 0.01))
-
-		if _dbg_frame % dbg_print_every_frames == 0:
-			print("[GM] speed=", snappedf(current_speed, 0.01),
-				" score=", int(current_score),
-				" penalty_calls=", _dbg_penalty_calls)
-
-	_dbg_prev_speed = current_speed
+	if _suppression_timer > 0.0:
+		_suppression_timer -= delta
+	else: # Only apply acceleration if the player hasn't crashed recently!
+		# Calculate how far we are from top speed (0.0 = at base, 1.0 = at max speed)
+		var speed_percentage: float = current_speed / max_speed
+		# Dynamic easing: Accelerate faster when moving slow, slower when moving fast
+		var dynamic_accel: float = lerp(320.0, 45.0, speed_percentage)
+		current_speed += dynamic_accel * delta
+		current_speed = min(current_speed, max_speed)
 
 func start_running() -> void:
 	if running:
 		return
 	running = true
 	current_speed = max(current_speed, start_speed)
-
-	if dbg_enabled:
-		print("[GM] start_running -> speed=", current_speed)
 
 func stop_running() -> void:
 	running = false
@@ -128,19 +101,7 @@ func stop_running() -> void:
 
 	current_score = 0.0
 
-	if dbg_enabled:
-		print("[GM] stop_running -> speed reset to ", current_speed, " highscore=", int(highscore))
-
 func apply_speed_penalty(extra_amount: float) -> void:
-	# DEBUG record
-	_dbg_penalty_calls += 1
-	_dbg_last_penalty_extra = extra_amount
-	_dbg_last_penalty_time = _dbg_time
-
-	if dbg_enabled:
-		print("[GM][PENALTY] call#", _dbg_penalty_calls,
-			" extra=", extra_amount,
-			" speed_before=", snappedf(current_speed, 0.01))
 
 	# Immediate impact slam
 	current_speed *= hit_impact_multiplier
@@ -150,11 +111,7 @@ func apply_speed_penalty(extra_amount: float) -> void:
 	var total: float = penalty_flat + scaled + extra_amount
 
 	current_speed = max(min_speed_floor, current_speed - total)
-
-	if dbg_enabled:
-		print("[GM][PENALTY] speed_after=", snappedf(current_speed, 0.01),
-			" total=", snappedf(total, 0.01),
-			" scaled=", snappedf(scaled, 0.01))
+	_suppression_timer = post_hit_suppression_time
 
 func _load_highscore() -> void:
 	if FileAccess.file_exists("user://save.dat"):
@@ -167,11 +124,10 @@ func _save_highscore() -> void:
 
 
 ---- FILE: .\scripts\ground_segment.gd ----
-
-extends AnimatableBody2D
+# res://scripts/ground_segment.gd
+extends PlatformChunk
 class_name GroundSegment
 
-@export var segment_width: float = 1056.0
 @export var segment_height: float = 64.0
 @export var tile_size: int = 48
 
@@ -188,20 +144,18 @@ class_name GroundSegment
 @export var obstacle_half_width_px: float = 24.0
 @export var segment_edge_margin_px: float = 48.0
 
-@export var dbg_enabled: bool = true
+@export var dbg_enabled: bool = false
 
 @onready var col_left: CollisionShape2D = $SolidLeft
 @onready var col_right: CollisionShape2D = $SolidRight
-
 @onready var left_sprite: Sprite2D = $Sprite2D
+
 var right_sprite: Sprite2D = null
 var _tex_size: Vector2 = Vector2.ONE
-
 var _left_shape: RectangleShape2D
 var _right_shape: RectangleShape2D
 
 var flat_counter: int = 0
-
 var _has_left: bool = true
 var _has_right: bool = false
 var _left_start_x: float = 0.0
@@ -209,18 +163,9 @@ var _left_end_x: float = 0.0
 var _right_start_x: float = 0.0
 var _right_end_x: float = 0.0
 
-# This is now truly an OFFSET from the original y
-var segment_height_offset: float = 0.0
-var _base_y: float = 0.0
-
 const OBSTACLE_FALLBACK_PATH: String = "res://scenes/obstacle.tscn"
 
-
 func _ready() -> void:
-	_base_y = position.y  # ✅ store the editor baseline once
-
-	if dbg_enabled:
-		print("[SEG] ready ", name, " base_y=", _base_y)
 	_left_shape = RectangleShape2D.new()
 	_right_shape = RectangleShape2D.new()
 	col_left.shape = _left_shape
@@ -229,11 +174,7 @@ func _ready() -> void:
 	if obstacle_scene == null:
 		obstacle_scene = load(OBSTACLE_FALLBACK_PATH) as PackedScene
 
-	# --- Visual setup --- (unchanged)
-	if left_sprite == null or left_sprite.texture == null:
-		push_warning("GroundSegment: Sprite2D or texture missing. Visual ground won't match collisions.")
-		_tex_size = Vector2.ONE
-	else:
+	if left_sprite and left_sprite.texture:
 		_tex_size = left_sprite.texture.get_size()
 
 	right_sprite = get_node_or_null("RightSprite") as Sprite2D
@@ -241,22 +182,20 @@ func _ready() -> void:
 		right_sprite = Sprite2D.new()
 		right_sprite.name = "RightSprite"
 		right_sprite.centered = true
-		right_sprite.z_index = left_sprite.z_index
+		right_sprite.z_index = left_sprite.z_index if left_sprite else 0
 		add_child(right_sprite)
-		right_sprite.texture = left_sprite.texture
+		if left_sprite:
+			right_sprite.texture = left_sprite.texture
 
-	if _tex_size.y > 0.0:
+	if _tex_size.y > 0.0 and left_sprite:
 		var sy := segment_height / _tex_size.y
 		left_sprite.scale.y = sy
 		right_sprite.scale.y = sy
 
 	configure_no_gap()
-	_apply_height_offset() # ✅ apply baseline + offset
 
 func configure_with_difficulty(speed: float, max_speed: float) -> void:
-	_apply_height_offset()
 	clear_obstacles()
-
 	var t: float = clamp(speed / max_speed, 0.0, 1.0)
 
 	var gap_chance: float = lerp(0.25, 0.65, t)
@@ -275,8 +214,7 @@ func configure_random_cutout(chance: float, min_gap: int, max_gap: int) -> void:
 		return
 
 	flat_counter = 0
-
-	var tiles_total: int = int(segment_width / float(tile_size))
+	var tiles_total: int = int(chunk_width / float(tile_size))
 
 	min_gap = clamp(min_gap, 1, tiles_total - 2)
 	max_gap = clamp(max_gap, min_gap, tiles_total - 2)
@@ -301,29 +239,26 @@ func configure_no_gap() -> void:
 	col_left.disabled = false
 	col_right.disabled = true
 
-	_left_shape.size = Vector2(segment_width, segment_height)
-	col_left.position = Vector2(0.0, 0.0)
+	_left_shape.size = Vector2(chunk_width, segment_height)
+	col_left.position = Vector2.ZERO
 
 	_has_left = true
 	_has_right = false
 
-	var half_w: float = segment_width / 2.0
+	var half_w: float = chunk_width / 2.0
 	_left_start_x = -half_w
 	_left_end_x = half_w
 
-	# --- Visuals: left covers full, right hidden ---
-	_apply_ground_visuals(segment_width, 0.0)
+	_apply_ground_visuals(chunk_width, 0.0)
 
 func configure_gap(gap_start_tiles: int, gap_tiles: int) -> void:
 	var gap_start_px: float = float(gap_start_tiles * tile_size)
 	var gap_width_px: float = float(gap_tiles * tile_size)
-
-	var half_w: float = segment_width / 2.0
+	var half_w: float = chunk_width / 2.0
 
 	var left_width: float = gap_start_px
-	var right_width: float = segment_width - (gap_start_px + gap_width_px)
+	var right_width: float = chunk_width - (gap_start_px + gap_width_px)
 
-	# LEFT solid
 	if left_width <= 0.0:
 		col_left.disabled = true
 		_has_left = false
@@ -335,7 +270,6 @@ func configure_gap(gap_start_tiles: int, gap_tiles: int) -> void:
 		_left_start_x = -half_w
 		_left_end_x = -half_w + left_width
 
-	# RIGHT solid
 	var gap_end: float = -half_w + left_width + gap_width_px
 
 	if right_width <= 0.0:
@@ -349,19 +283,12 @@ func configure_gap(gap_start_tiles: int, gap_tiles: int) -> void:
 		_right_start_x = gap_end
 		_right_end_x = half_w
 
-	# --- Visuals: match collision widths exactly ---
 	_apply_ground_visuals(left_width, right_width)
 
 func _apply_ground_visuals(left_width: float, right_width: float) -> void:
-	# If no texture, nothing to do
-	if left_sprite == null or left_sprite.texture == null:
-		return
-	if right_sprite == null:
-		return
-	if _tex_size.x <= 0.0:
+	if left_sprite == null or left_sprite.texture == null or right_sprite == null or _tex_size.x <= 0.0:
 		return
 
-	# Left visual
 	if col_left.disabled or left_width <= 0.0:
 		left_sprite.visible = false
 	else:
@@ -369,7 +296,6 @@ func _apply_ground_visuals(left_width: float, right_width: float) -> void:
 		left_sprite.position.x = col_left.position.x
 		left_sprite.scale.x = left_width / _tex_size.x
 
-	# Right visual
 	if col_right.disabled or right_width <= 0.0:
 		right_sprite.visible = false
 	else:
@@ -378,9 +304,7 @@ func _apply_ground_visuals(left_width: float, right_width: float) -> void:
 		right_sprite.scale.x = right_width / _tex_size.x
 
 func spawn_obstacle(chance: float) -> void:
-	if obstacle_scene == null:
-		return
-	if randf() > chance:
+	if obstacle_scene == null or randf() > chance:
 		return
 
 	var eligible: Array[int] = []
@@ -393,7 +317,6 @@ func spawn_obstacle(chance: float) -> void:
 		return
 
 	var pick: int = eligible[randi() % eligible.size()]
-
 	var gap_guard_px: float = float(gap_guard_tiles * tile_size)
 	var margin_px: float = max(segment_edge_margin_px, obstacle_half_width_px)
 
@@ -412,12 +335,8 @@ func spawn_obstacle(chance: float) -> void:
 
 	var obstacle := obstacle_scene.instantiate() as Node2D
 	var x_pos: float = randf_range(x_min, x_max)
-
 	var ground_y: float = -segment_height / 2.0
-	var y_positions: Array[float] = [
-		ground_y - 32.0,
-		ground_y - 44.0
-	]
+	var y_positions: Array[float] = [ground_y - 32.0, ground_y - 44.0]
 	var y_pos: float = y_positions[randi() % y_positions.size()]
 
 	obstacle.position = Vector2(x_pos, y_pos)
@@ -428,22 +347,118 @@ func _solid_width_tiles(a: float, b: float) -> int:
 	var w_px: float = max(0.0, b - a)
 	return int(w_px / float(tile_size))
 
-
 func clear_obstacles() -> void:
 	for child in get_children():
 		if child is Area2D:
 			child.queue_free()
 
 
-func _apply_height_offset() -> void:
-	position.y = _base_y + segment_height_offset
-	if dbg_enabled:
-		print("[SEG] ", name, " apply_height offset=", snappedf(segment_height_offset, 0.01),
-			" -> y=", snappedf(position.y, 0.01))
-
-
 ---- FILE: .\scripts\level_spawner.gd ----
-extends Node
+# res://scripts/level_spawner.gd
+extends Node2D
+class_name LevelSpawner
+
+@export var platform_scenes: Array[PackedScene] = []
+@export var spawn_buffer_x: float = 800.0   # Generates out to the right boundary
+@export var destroy_buffer_x: float = -600.0 # Clears things past the left edge
+
+@export var max_step_offset: float = 24.0
+@export var max_total_offset: float = 72.0
+
+var active_chunks: Array[PlatformChunk] = []
+var next_spawn_x: float = 0.0
+var last_height_offset: float = 0.0
+var track_base_y: float = 328.0 # Found baseline in your scene configurations
+
+func _ready() -> void:
+	reset_spawner()
+
+func _physics_process(delta: float) -> void:
+	var gm := get_tree().get_first_node_in_group("game_manager") as GameManager
+	if not gm or not gm.running:
+		return
+
+	# Bring tracking markers backward with current speed vector shift
+	next_spawn_x -= gm.current_speed * delta
+
+	# Check visual workspace limits and allocate runtime allocations
+	var current_rightmost_visible := next_spawn_x
+	if current_rightmost_visible < spawn_buffer_x:
+		spawn_next_chunk(gm)
+
+	_cleanup_old_chunks()
+
+func spawn_next_chunk(gm: GameManager) -> void:
+	if platform_scenes.is_empty():
+		return
+
+	var picked_scene := platform_scenes.pick_random() as PackedScene
+	var chunk := picked_scene.instantiate() as PlatformChunk
+	if not chunk:
+		return
+
+	# Calculate clean jump adjustments
+	var next_offset := clampf(
+		last_height_offset + randf_range(-max_step_offset, max_step_offset),
+		-max_total_offset,
+		max_total_offset
+	)
+	
+	# Determine procedural empty air gaps between platforms
+	var gap := randf_range(48.0, 160.0)
+	
+	# Compute spatial position (Pivot centered placement setup offset compensation)
+	var spawn_pos_x := next_spawn_x + gap + (chunk.chunk_width / 2.0)
+	var spawn_pos_y := track_base_y + next_offset
+
+	chunk.position = Vector2(spawn_pos_x, spawn_pos_y)
+	add_child(chunk)
+
+	if chunk is GroundSegment:
+		chunk.configure_with_difficulty(gm.current_speed, gm.max_speed)
+
+	active_chunks.append(chunk)
+	
+	# Set next anchor directly past this chunk's right edge
+	next_spawn_x = chunk.position.x + (chunk.chunk_width / 2.0)
+	last_height_offset = next_offset
+
+func reset_spawner() -> void:
+	# Purge all existing blocks
+	for chunk in active_chunks:
+		if is_instance_valid(chunk):
+			chunk.queue_free()
+	active_chunks.clear()
+
+	last_height_offset = 0.0
+	next_spawn_x = 0.0
+
+	# Spawn an initial safety floor for the player to land on when starting
+	if not platform_scenes.is_empty():
+		var first_scene := platform_scenes[0]
+		var chunk := first_scene.instantiate() as PlatformChunk
+		
+		# Center first platform directly underneath the starting character position
+		var spawn_pos_x := chunk.chunk_width / 2.0
+		chunk.position = Vector2(spawn_pos_x, track_base_y)
+		add_child(chunk)
+		
+		if chunk is GroundSegment:
+			chunk.configure_no_gap()
+			
+		active_chunks.append(chunk)
+		next_spawn_x = chunk.position.x + (chunk.chunk_width / 2.0)
+
+func _cleanup_old_chunks() -> void:
+	var dead_chunks: Array[PlatformChunk] = []
+	for chunk in active_chunks:
+		# Check if the right boundary edge of the platform is off-screen left
+		if chunk.position.x + (chunk.chunk_width / 2.0) < destroy_buffer_x:
+			dead_chunks.append(chunk)
+			chunk.queue_free()
+
+	for chunk in dead_chunks:
+		active_chunks.erase(chunk)
 
 
 ---- FILE: .\scripts\obstacle.gd ----
@@ -466,7 +481,17 @@ func _on_body_entered(body: Node) -> void:
 
 
 ---- FILE: .\scripts\platform_chunk.gd ----
-extends Node
+# res://scripts/platform_chunk.gd
+extends StaticBody2D
+class_name PlatformChunk
+
+@export var chunk_width: float = 1056.0
+
+func _physics_process(delta: float) -> void:
+	var gm := get_tree().get_first_node_in_group("game_manager") as GameManager
+	if gm and gm.running:
+		# Uniform world movement vectors processed directly via physics server step
+		position.x -= gm.current_speed * delta
 
 
 ---- FILE: .\scripts\player.gd ----
@@ -541,7 +566,7 @@ var anchor_x: float = 0.0
 var _can_be_hit: bool = true
 
 var gm: GameManager
-var world: WorldRunner
+var spawner: LevelSpawner
 var fader: ScreenFader
 
 var _shake_left: float = 0.0
@@ -552,7 +577,7 @@ var _start_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	gm = get_parent().get_node("GameManager") as GameManager
-	world = get_parent().get_node("World") as WorldRunner
+	spawner = get_parent().get_node("LevelSpawner") as LevelSpawner
 	fader = get_tree().get_first_node_in_group("screen_fader") as ScreenFader
 
 	state = PlayerState.IDLE
@@ -835,14 +860,15 @@ func _reset_run() -> void:
 	_dash_cooldown_left = 0.0
 	_air_dash_used_this_air = false
 	_start_cooldown_on_next_landing = false
-
+	floor_snap_length = 0.0
+	
 	if standard_shape != null:
 		standard_shape.disabled = false
 	if dash_shape != null:
 		dash_shape.disabled = true
 
-	if world != null:
-		world.reset_world()
+	if spawner != null:
+		spawner.reset_spawner()
 
 
 # ---------------- DASH ----------------
@@ -1047,192 +1073,3 @@ func _process(_delta):
 		int(gm.current_score),
 		int(gm.highscore)
 	]
-
-
----- FILE: .\scripts\world.gd ----
-extends Node2D
-class_name WorldRunner
-
-@export var segment_width: float = 1056.0
-@export var wrap_buffer: float = 400.0
-
-# Height variation (jumpable)
-@export var max_step_offset: float = 20.0
-@export var max_total_offset: float = 60.0
-
-# DEBUG
-@export var dbg_enabled: bool = true
-@export var dbg_print_every_frames: int = 30
-
-var gm: GameManager
-var player: Node2D
-var segments: Array[Node2D] = []
-
-var _dbg_frame: int = 0
-
-# Track height baseline (absolute Y in world space)
-var _track_base_y: float = 0.0
-var _last_height_offset: float = 0.0
-
-# Pending wrap (store by instance id so we always hit the same node)
-var _pending_wrap_id: int = 0
-var _pending_wrap_x: float = 0.0
-var _pending_wrap_off: float = 0.0
-
-func _ready() -> void:
-	randomize()
-
-	gm = get_parent().get_node("GameManager") as GameManager
-	player = get_parent().get_node("Player") as Node2D
-
-	segments.clear()
-	for child in get_children():
-		if child is Node2D:
-			segments.append(child)
-
-	if segments.size() > 0:
-		_track_base_y = segments[0].position.y
-	else:
-		_track_base_y = 0.0
-
-	_last_height_offset = 0.0
-	_pending_wrap_id = 0
-
-	if dbg_enabled:
-		print("[WORLD] ready segments=", segments.size(), " names=", segments.map(func(n): return n.name), " base_y=", _track_base_y)
-
-func _physics_process(delta: float) -> void:
-	_dbg_frame += 1
-
-	if gm == null or player == null:
-		return
-
-	# Apply pending wrap first (next-frame apply)
-	_apply_pending_wrap()
-
-	if gm.current_speed <= 0.0:
-		if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0):
-			print("[WORLD] speed<=0 running=", gm.running, " speed=", snappedf(gm.current_speed, 0.01))
-		return
-
-	var dx: float = gm.current_speed * delta
-
-	for s in segments:
-		s.position.x -= dx
-
-	if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0) and segments.size() >= 2:
-		print("[WORLD] dx=", snappedf(dx, 0.01),
-			" A(", segments[0].name, ") x=", snappedf(segments[0].position.x, 0.01), " y=", snappedf(segments[0].position.y, 0.01),
-			" B(", segments[1].name, ") x=", snappedf(segments[1].position.x, 0.01), " y=", snappedf(segments[1].position.y, 0.01))
-
-	_schedule_wrap_if_needed()
-
-func _schedule_wrap_if_needed() -> void:
-	# Only one scheduled wrap at a time
-	if _pending_wrap_id != 0:
-		return
-
-	if segments.size() < 2:
-		return
-
-	var half_w: float = segment_width / 2.0
-	var left_limit: float = player.global_position.x - wrap_buffer
-
-	# Find leftmost and rightmost by X
-	var leftmost: Node2D = segments[0]
-	var rightmost: Node2D = segments[0]
-
-	for s in segments:
-		if s.position.x < leftmost.position.x:
-			leftmost = s
-		if s.position.x > rightmost.position.x:
-			rightmost = s
-
-	var right_edge_leftmost: float = leftmost.position.x + half_w
-	if right_edge_leftmost >= left_limit:
-		return
-
-	# Schedule wrap for next frame using instance ID
-	_pending_wrap_id = leftmost.get_instance_id()
-
-	# Place after rightmost
-	_pending_wrap_x = rightmost.position.x + segment_width
-
-	# Generate next height offset (typed)
-	_pending_wrap_off = clampf(
-		_last_height_offset + randf_range(-max_step_offset, max_step_offset),
-		-max_total_offset,
-		max_total_offset
-	)
-
-	_last_height_offset = _pending_wrap_off
-
-	if dbg_enabled:
-		print("[WORLD][SCHEDULE_WRAP] seg=", leftmost.name,
-			" id=", _pending_wrap_id,
-			" old_x=", snappedf(leftmost.position.x, 0.01),
-			" right_edge=", snappedf(right_edge_leftmost, 0.01),
-			" left_limit=", snappedf(left_limit, 0.01),
-			" new_x(next)=", snappedf(_pending_wrap_x, 0.01),
-			" off(next)=", snappedf(_pending_wrap_off, 0.01))
-
-func _apply_pending_wrap() -> void:
-	if _pending_wrap_id == 0:
-		return
-
-	# Find the exact node by instance id
-	var node: Node2D = null
-	for s in segments:
-		if s.get_instance_id() == _pending_wrap_id:
-			node = s
-			break
-
-	if node == null:
-		if dbg_enabled:
-			print("[WORLD][APPLY_WRAP] pending id not found, clearing id=", _pending_wrap_id)
-		_pending_wrap_id = 0
-		return
-
-	# Apply new position deterministically (WorldRunner owns X+Y here)
-	node.position.x = _pending_wrap_x
-	node.position.y = _track_base_y + _pending_wrap_off
-
-	# Only reconfigure content once per actual wrap
-	if node is GroundSegment:
-		var gs := node as GroundSegment
-		gs.segment_height_offset = _pending_wrap_off  # optional, for your own tracking
-		gs.configure_with_difficulty(gm.current_speed, gm.max_speed)
-
-	if dbg_enabled:
-		print("[WORLD][APPLY_WRAP] seg=", node.name,
-			" id=", _pending_wrap_id,
-			" x=", snappedf(node.position.x, 0.01),
-			" y=", snappedf(node.position.y, 0.01),
-			" off=", snappedf(_pending_wrap_off, 0.01))
-
-	_pending_wrap_id = 0
-
-func reset_world() -> void:
-	var half_w: float = segment_width / 2.0
-
-	segments.sort_custom(func(a: Node2D, b: Node2D) -> bool:
-		return a.position.x < b.position.x
-	)
-
-	_last_height_offset = 0.0
-	_pending_wrap_id = 0
-
-	# Reset baseline to current first segment height
-	if segments.size() > 0:
-		_track_base_y = segments[0].position.y
-
-	for i in range(segments.size()):
-		var s := segments[i]
-		s.position.x = half_w + float(i) * segment_width
-		s.position.y = _track_base_y
-
-		if s is GroundSegment:
-			var gs := s as GroundSegment
-			gs.clear_obstacles()
-			gs.configure_no_gap()
-			gs.segment_height_offset = 0.0

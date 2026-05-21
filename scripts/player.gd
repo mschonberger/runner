@@ -188,7 +188,11 @@ func _handle_start_or_jump() -> void:
 		started = true
 		if gm != null:
 			gm.start_running()
-		state = PlayerState.WALK
+		
+		# Give an immediate upward jump velocity when kicking off from the start screen
+		velocity.y = _effective_jump_velocity()
+		state = PlayerState.JUMP
+		coyote_time_left = 0.0
 		return
 
 	if coyote_time_left > 0.0:
