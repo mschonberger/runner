@@ -1,0 +1,28 @@
+[gd_scene load_steps=5 format=3 uid="uid://c70kn4k378y2f"]
+
+[ext_resource type="Texture2D" uid="uid://c7deysg2wcp0g" path="res://art/ui/jump.png" id="1_4rjyr"]
+[ext_resource type="Texture2D" uid="uid://d12kpg2lnoawm" path="res://art/ui/jump_pressed.png" id="2_y1te1"]
+[ext_resource type="Texture2D" uid="uid://bu11y06b270mx" path="res://art/ui/dash.png" id="3_puaky"]
+[ext_resource type="Texture2D" uid="uid://cadj0kdfsisro" path="res://art/ui/dash_pressed.png" id="4_yr8f1"]
+
+[node name="MobileControls" type="CanvasLayer"]
+
+[node name="Layout" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="JumpButton" type="TouchScreenButton" parent="Layout"]
+position = Vector2(540, 260)
+texture_normal = ExtResource("1_4rjyr")
+texture_pressed = ExtResource("2_y1te1")
+action = "jump"
+
+[node name="DashButton" type="TouchScreenButton" parent="Layout"]
+position = Vector2(0, 260)
+texture_normal = ExtResource("3_puaky")
+texture_pressed = ExtResource("4_yr8f1")
+action = "dash"

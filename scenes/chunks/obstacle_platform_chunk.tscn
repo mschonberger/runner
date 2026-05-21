@@ -1,0 +1,21 @@
+[gd_scene load_steps=6 format=3 uid="uid://ckw1143whcd0c"]
+
+[ext_resource type="Script" uid="uid://y4mffnxr7j40" path="res://scripts/obstacle_platform_chunk.gd" id="1_wal6c"]
+[ext_resource type="PackedScene" uid="uid://bxk3as2comfs0" path="res://scenes/obstacle.tscn" id="2_hyixk"]
+[ext_resource type="PackedScene" uid="uid://itkdrqvuq2aj" path="res://scenes/deadly_obstacle.tscn" id="3_obc8d"]
+[ext_resource type="Texture2D" uid="uid://c7xresp44d1u4" path="res://art/floor/GroundB.png" id="4_hyixk"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wal6c"]
+size = Vector2(2112, 64)
+
+[node name="ObstaclePlatformChunk" type="StaticBody2D"]
+script = ExtResource("1_wal6c")
+normal_obstacle_scene = ExtResource("2_hyixk")
+deadly_obstacle_scene = ExtResource("3_obc8d")
+chunk_width = 2112.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("4_hyixk")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_wal6c")

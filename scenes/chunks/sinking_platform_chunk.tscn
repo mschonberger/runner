@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://blorfy0uhw71g"]
+
+[ext_resource type="Script" uid="uid://bjhdjys35reh1" path="res://scripts/sinking_platform_chunk.gd" id="1_7e7e5"]
+[ext_resource type="Texture2D" uid="uid://d07ctn5t31miv" path="res://art/floor/GroundE.png" id="2_7e7e5"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_b78oy"]
+size = Vector2(1584, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_bkel1"]
+size = Vector2(1056, 10)
+
+[node name="SinkingPlatformChunk" type="StaticBody2D"]
+script = ExtResource("1_7e7e5")
+chunk_width = 1584.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_7e7e5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_b78oy")
+
+[node name="StepTrigger" type="Area2D" parent="."]
+position = Vector2(250, -36)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StepTrigger"]
+shape = SubResource("RectangleShape2D_bkel1")

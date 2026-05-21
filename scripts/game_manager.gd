@@ -114,9 +114,9 @@ func _load_leaderboard() -> void:
 				return
 				
 	leaderboard = [
-		{"name": "SCOTT", "score": 500.0},
-		{"name": "RAMONA", "score": 300.0},
-		{"name": "NEIL", "score": 100.0}
+		{"name": "LUCA", "score": 500.0},
+		{"name": "ELOI", "score": 300.0},
+		{"name": "MARK", "score": 100.0}
 	]
 
 func _save_leaderboard() -> void:
