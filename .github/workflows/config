@@ -1,0 +1,45 @@
+name: "Publish to GitHub Pages"
+
+on:
+  push:
+    branches:
+      - main  # Change this to 'master' if your default branch uses the old naming scheme
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.5.1 # Matches your exact Godot version
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Move Web Templates into Position
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/4.5.1.stable ~/.local/share/godot/export_templates/4.5.1.stable
+
+      - name: Create Staging Directory
+        run: mkdir -v -p build/web
+
+      - name: Export Project to Web
+        run: godot -v --export-release --headless "Web" build/web/index.html
+
+      - name: Bypass GitHub Pages SharedArrayBuffer Restrictions
+        run: |
+          git clone https://github.com/gzuidhof/coi-serviceworker.git
+          mv coi-serviceworker/coi-serviceworker.js build/web/coi-serviceworker.js
+          sed -i '3 i <script src="coi-serviceworker.js"></script>' build/web/index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          force_orphan: true
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
