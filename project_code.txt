@@ -1,0 +1,1238 @@
+==== PROJECT STRUCTURE ====
+./
+    .editorconfig
+    .gitattributes
+    .gitignore
+    dump_context.py
+    project.godot
+    README.md
+    art/
+        floor/
+        player/
+    globals/
+    scenes/
+        ground_segment.tscn
+        main.tscn
+        obstacle.tscn
+        player.tscn
+    scripts/
+        game_manager.gd
+        ground_segment.gd
+        level_spawner.gd
+        obstacle.gd
+        platform_chunk.gd
+        player.gd
+        screen_fader.gd
+        ui.gd
+        world.gd
+
+==== CODE FILES ====
+
+
+---- FILE: .\scripts\game_manager.gd ----
+extends Node
+class_name GameManager
+
+@export var base_speed: float = 0.0
+@export var start_speed: float = 180.0
+@export var accel: float = 220.0
+@export var max_speed: float = 650.0
+
+@export var penalty_flat: float = 160.0
+@export var penalty_speed_fraction: float = 0.22
+@export var hit_impact_multiplier: float = 0.70
+@export var min_speed_floor: float = 80.0
+
+var current_speed: float = 0.0
+var running: bool = false
+var can_start: bool = true
+
+var current_score: float = 0.0
+var highscore: float = 0.0
+
+# ---------------- DEBUG ----------------
+@export var dbg_enabled: bool = true
+@export var dbg_print_every_frames: int = 30
+@export var dbg_speed_drop_threshold: float = 40.0 # px/s drop considered "suspicious"
+
+var _dbg_frame: int = 0
+var _dbg_prev_speed: float = 0.0
+var _dbg_last_penalty_extra: float = 0.0
+var _dbg_penalty_calls: int = 0
+var _dbg_last_penalty_time: float = -999.0
+var _dbg_time: float = 0.0
+# --------------------------------------
+
+func _ready() -> void:
+	add_to_group("game_manager")
+	current_speed = base_speed
+	running = false
+	can_start = true
+	_load_highscore()
+
+	_dbg_prev_speed = current_speed
+	if dbg_enabled:
+		print("[GM] ready base_speed=", base_speed, " start_speed=", start_speed, " accel=", accel, " max_speed=", max_speed)
+
+func _physics_process(delta: float) -> void:
+	_dbg_time += delta
+	_dbg_frame += 1
+
+	if not running:
+		if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0):
+			print("[GM] running=false speed=", snappedf(current_speed, 0.01), " can_start=", can_start)
+		_dbg_prev_speed = current_speed
+		return
+
+	# score
+	current_score += current_speed * delta * 0.1
+
+	# accelerate
+	current_speed += accel * delta
+	current_speed = min(current_speed, max_speed)
+
+	# suspicious speed drop detector
+	if dbg_enabled:
+		var drop := _dbg_prev_speed - current_speed
+		if drop > dbg_speed_drop_threshold:
+			print("[GM][DROP] speed dropped by ", snappedf(drop, 0.01),
+				" prev=", snappedf(_dbg_prev_speed, 0.01),
+				" now=", snappedf(current_speed, 0.01),
+				" penalty_calls=", _dbg_penalty_calls,
+				" last_penalty_extra=", _dbg_last_penalty_extra,
+				" last_penalty_age=", snappedf(_dbg_time - _dbg_last_penalty_time, 0.01))
+
+		if _dbg_frame % dbg_print_every_frames == 0:
+			print("[GM] speed=", snappedf(current_speed, 0.01),
+				" score=", int(current_score),
+				" penalty_calls=", _dbg_penalty_calls)
+
+	_dbg_prev_speed = current_speed
+
+func start_running() -> void:
+	if running:
+		return
+	running = true
+	current_speed = max(current_speed, start_speed)
+
+	if dbg_enabled:
+		print("[GM] start_running -> speed=", current_speed)
+
+func stop_running() -> void:
+	running = false
+	current_speed = base_speed
+
+	if current_score > highscore:
+		highscore = current_score
+		_save_highscore()
+
+	current_score = 0.0
+
+	if dbg_enabled:
+		print("[GM] stop_running -> speed reset to ", current_speed, " highscore=", int(highscore))
+
+func apply_speed_penalty(extra_amount: float) -> void:
+	# DEBUG record
+	_dbg_penalty_calls += 1
+	_dbg_last_penalty_extra = extra_amount
+	_dbg_last_penalty_time = _dbg_time
+
+	if dbg_enabled:
+		print("[GM][PENALTY] call#", _dbg_penalty_calls,
+			" extra=", extra_amount,
+			" speed_before=", snappedf(current_speed, 0.01))
+
+	# Immediate impact slam
+	current_speed *= hit_impact_multiplier
+
+	# Scaled penalty so it always hurts at high speed
+	var scaled: float = current_speed * penalty_speed_fraction
+	var total: float = penalty_flat + scaled + extra_amount
+
+	current_speed = max(min_speed_floor, current_speed - total)
+
+	if dbg_enabled:
+		print("[GM][PENALTY] speed_after=", snappedf(current_speed, 0.01),
+			" total=", snappedf(total, 0.01),
+			" scaled=", snappedf(scaled, 0.01))
+
+func _load_highscore() -> void:
+	if FileAccess.file_exists("user://save.dat"):
+		var file = FileAccess.open("user://save.dat", FileAccess.READ)
+		highscore = file.get_float()
+
+func _save_highscore() -> void:
+	var file = FileAccess.open("user://save.dat", FileAccess.WRITE)
+	file.store_float(highscore)
+
+
+---- FILE: .\scripts\ground_segment.gd ----
+
+extends AnimatableBody2D
+class_name GroundSegment
+
+@export var segment_width: float = 1056.0
+@export var segment_height: float = 64.0
+@export var tile_size: int = 48
+
+@export var side_margin_tiles: int = 2
+@export var max_jumpable_tiles: int = 8
+@export var max_flat_segments: int = 3
+
+@export var obstacle_scene: PackedScene
+@export var obstacle_chance_min: float = 0.25
+@export var obstacle_chance_max: float = 0.55
+
+@export var min_solid_tiles_for_obstacle: int = 10
+@export var gap_guard_tiles: int = 4
+@export var obstacle_half_width_px: float = 24.0
+@export var segment_edge_margin_px: float = 48.0
+
+@export var dbg_enabled: bool = true
+
+@onready var col_left: CollisionShape2D = $SolidLeft
+@onready var col_right: CollisionShape2D = $SolidRight
+
+@onready var left_sprite: Sprite2D = $Sprite2D
+var right_sprite: Sprite2D = null
+var _tex_size: Vector2 = Vector2.ONE
+
+var _left_shape: RectangleShape2D
+var _right_shape: RectangleShape2D
+
+var flat_counter: int = 0
+
+var _has_left: bool = true
+var _has_right: bool = false
+var _left_start_x: float = 0.0
+var _left_end_x: float = 0.0
+var _right_start_x: float = 0.0
+var _right_end_x: float = 0.0
+
+# This is now truly an OFFSET from the original y
+var segment_height_offset: float = 0.0
+var _base_y: float = 0.0
+
+const OBSTACLE_FALLBACK_PATH: String = "res://scenes/obstacle.tscn"
+
+
+func _ready() -> void:
+	_base_y = position.y  # ✅ store the editor baseline once
+
+	if dbg_enabled:
+		print("[SEG] ready ", name, " base_y=", _base_y)
+	_left_shape = RectangleShape2D.new()
+	_right_shape = RectangleShape2D.new()
+	col_left.shape = _left_shape
+	col_right.shape = _right_shape
+
+	if obstacle_scene == null:
+		obstacle_scene = load(OBSTACLE_FALLBACK_PATH) as PackedScene
+
+	# --- Visual setup --- (unchanged)
+	if left_sprite == null or left_sprite.texture == null:
+		push_warning("GroundSegment: Sprite2D or texture missing. Visual ground won't match collisions.")
+		_tex_size = Vector2.ONE
+	else:
+		_tex_size = left_sprite.texture.get_size()
+
+	right_sprite = get_node_or_null("RightSprite") as Sprite2D
+	if right_sprite == null:
+		right_sprite = Sprite2D.new()
+		right_sprite.name = "RightSprite"
+		right_sprite.centered = true
+		right_sprite.z_index = left_sprite.z_index
+		add_child(right_sprite)
+		right_sprite.texture = left_sprite.texture
+
+	if _tex_size.y > 0.0:
+		var sy := segment_height / _tex_size.y
+		left_sprite.scale.y = sy
+		right_sprite.scale.y = sy
+
+	configure_no_gap()
+	_apply_height_offset() # ✅ apply baseline + offset
+
+func configure_with_difficulty(speed: float, max_speed: float) -> void:
+	_apply_height_offset()
+	clear_obstacles()
+
+	var t: float = clamp(speed / max_speed, 0.0, 1.0)
+
+	var gap_chance: float = lerp(0.25, 0.65, t)
+	var min_gap: int = int(lerp(3.0, 5.0, t))
+	var max_gap: int = int(lerp(6.0, float(max_jumpable_tiles), t))
+
+	configure_random_cutout(gap_chance, min_gap, max_gap)
+
+	var obs_chance: float = lerp(obstacle_chance_min, obstacle_chance_max, t)
+	spawn_obstacle(obs_chance)
+
+func configure_random_cutout(chance: float, min_gap: int, max_gap: int) -> void:
+	if randf() > chance and flat_counter < max_flat_segments:
+		flat_counter += 1
+		configure_no_gap()
+		return
+
+	flat_counter = 0
+
+	var tiles_total: int = int(segment_width / float(tile_size))
+
+	min_gap = clamp(min_gap, 1, tiles_total - 2)
+	max_gap = clamp(max_gap, min_gap, tiles_total - 2)
+
+	var gap_tiles: int = int(randi_range(min_gap, max_gap))
+	gap_tiles = min(gap_tiles, max_jumpable_tiles)
+
+	var margin_limit: int = int(tiles_total / 2.0)
+	var margin: int = min(side_margin_tiles, margin_limit)
+
+	var start_min: int = margin
+	var start_max: int = int(tiles_total - margin - gap_tiles)
+
+	if start_max <= start_min:
+		configure_no_gap()
+		return
+
+	var gap_start_tiles: int = int(randi_range(start_min, start_max))
+	configure_gap(gap_start_tiles, gap_tiles)
+
+func configure_no_gap() -> void:
+	col_left.disabled = false
+	col_right.disabled = true
+
+	_left_shape.size = Vector2(segment_width, segment_height)
+	col_left.position = Vector2(0.0, 0.0)
+
+	_has_left = true
+	_has_right = false
+
+	var half_w: float = segment_width / 2.0
+	_left_start_x = -half_w
+	_left_end_x = half_w
+
+	# --- Visuals: left covers full, right hidden ---
+	_apply_ground_visuals(segment_width, 0.0)
+
+func configure_gap(gap_start_tiles: int, gap_tiles: int) -> void:
+	var gap_start_px: float = float(gap_start_tiles * tile_size)
+	var gap_width_px: float = float(gap_tiles * tile_size)
+
+	var half_w: float = segment_width / 2.0
+
+	var left_width: float = gap_start_px
+	var right_width: float = segment_width - (gap_start_px + gap_width_px)
+
+	# LEFT solid
+	if left_width <= 0.0:
+		col_left.disabled = true
+		_has_left = false
+	else:
+		col_left.disabled = false
+		_has_left = true
+		_left_shape.size = Vector2(left_width, segment_height)
+		col_left.position.x = -half_w + left_width / 2.0
+		_left_start_x = -half_w
+		_left_end_x = -half_w + left_width
+
+	# RIGHT solid
+	var gap_end: float = -half_w + left_width + gap_width_px
+
+	if right_width <= 0.0:
+		col_right.disabled = true
+		_has_right = false
+	else:
+		col_right.disabled = false
+		_has_right = true
+		_right_shape.size = Vector2(right_width, segment_height)
+		col_right.position.x = gap_end + right_width / 2.0
+		_right_start_x = gap_end
+		_right_end_x = half_w
+
+	# --- Visuals: match collision widths exactly ---
+	_apply_ground_visuals(left_width, right_width)
+
+func _apply_ground_visuals(left_width: float, right_width: float) -> void:
+	# If no texture, nothing to do
+	if left_sprite == null or left_sprite.texture == null:
+		return
+	if right_sprite == null:
+		return
+	if _tex_size.x <= 0.0:
+		return
+
+	# Left visual
+	if col_left.disabled or left_width <= 0.0:
+		left_sprite.visible = false
+	else:
+		left_sprite.visible = true
+		left_sprite.position.x = col_left.position.x
+		left_sprite.scale.x = left_width / _tex_size.x
+
+	# Right visual
+	if col_right.disabled or right_width <= 0.0:
+		right_sprite.visible = false
+	else:
+		right_sprite.visible = true
+		right_sprite.position.x = col_right.position.x
+		right_sprite.scale.x = right_width / _tex_size.x
+
+func spawn_obstacle(chance: float) -> void:
+	if obstacle_scene == null:
+		return
+	if randf() > chance:
+		return
+
+	var eligible: Array[int] = []
+	if _has_left and _solid_width_tiles(_left_start_x, _left_end_x) >= min_solid_tiles_for_obstacle:
+		eligible.append(0)
+	if _has_right and _solid_width_tiles(_right_start_x, _right_end_x) >= min_solid_tiles_for_obstacle:
+		eligible.append(1)
+
+	if eligible.is_empty():
+		return
+
+	var pick: int = eligible[randi() % eligible.size()]
+
+	var gap_guard_px: float = float(gap_guard_tiles * tile_size)
+	var margin_px: float = max(segment_edge_margin_px, obstacle_half_width_px)
+
+	var x_min: float
+	var x_max: float
+
+	if pick == 0:
+		x_min = _left_start_x + margin_px
+		x_max = _left_end_x - max(margin_px, gap_guard_px)
+	else:
+		x_min = _right_start_x + max(margin_px, gap_guard_px)
+		x_max = _right_end_x - margin_px
+
+	if x_max <= x_min:
+		return
+
+	var obstacle := obstacle_scene.instantiate() as Node2D
+	var x_pos: float = randf_range(x_min, x_max)
+
+	var ground_y: float = -segment_height / 2.0
+	var y_positions: Array[float] = [
+		ground_y - 32.0,
+		ground_y - 44.0
+	]
+	var y_pos: float = y_positions[randi() % y_positions.size()]
+
+	obstacle.position = Vector2(x_pos, y_pos)
+	obstacle.z_index = 10
+	add_child(obstacle)
+
+func _solid_width_tiles(a: float, b: float) -> int:
+	var w_px: float = max(0.0, b - a)
+	return int(w_px / float(tile_size))
+
+
+func clear_obstacles() -> void:
+	for child in get_children():
+		if child is Area2D:
+			child.queue_free()
+
+
+func _apply_height_offset() -> void:
+	position.y = _base_y + segment_height_offset
+	if dbg_enabled:
+		print("[SEG] ", name, " apply_height offset=", snappedf(segment_height_offset, 0.01),
+			" -> y=", snappedf(position.y, 0.01))
+
+
+---- FILE: .\scripts\level_spawner.gd ----
+extends Node
+
+
+---- FILE: .\scripts\obstacle.gd ----
+extends Area2D
+
+@export var penalty_extra: float = 80.0
+
+func _ready() -> void:
+	body_entered.connect(_on_body_entered)
+
+func _on_body_entered(body: Node) -> void:
+	var gm := get_tree().get_first_node_in_group("game_manager") as GameManager
+	if gm != null:
+		gm.apply_speed_penalty(penalty_extra)
+
+	if body != null and body.has_method("apply_hit"):
+		body.call("apply_hit")
+
+	queue_free()
+
+
+---- FILE: .\scripts\platform_chunk.gd ----
+extends Node
+
+
+---- FILE: .\scripts\player.gd ----
+extends CharacterBody2D
+
+enum PlayerState {
+	IDLE,
+	WALK,
+	RUN,
+	JUMP,
+	FALL,
+	LAND,
+	HIT,
+	DASH
+}
+
+@onready var anim: AnimatedSprite2D = $AnimatedSprite2D
+@onready var cam: Camera2D = get_node_or_null("Camera2D") as Camera2D
+
+@onready var standard_shape: CollisionShape2D = $StandardShape
+@onready var dash_shape: CollisionShape2D = $DashShape
+
+@export var base_gravity: float = 1800.0
+
+@export var jump_velocity_min: float = -560.0
+@export var jump_velocity_max: float = -760.0
+@export var gravity_scale_min: float = 1.20
+@export var gravity_scale_max: float = 0.95
+
+@export var run_threshold: float = 360.0
+
+@export var coyote_time_max: float = 0.12
+@export var jump_cut_multiplier: float = 0.5
+
+@export var hit_lock_time: float = 0.25
+
+@export var shake_time: float = 0.15
+@export var shake_strength: float = 6.0
+
+@export var fall_reset_y: float = 900.0
+
+# Dash
+@export var dash_speed_bonus: float = 300.0
+@export var dash_duration: float = 99.0
+@export var dash_cooldown: float = 1.0
+
+# Air dash
+@export var air_dash_duration: float = 0.18
+@export var dash_air_boost_velocity: float = -220.0
+@export var dash_gravity_multiplier: float = 1.20
+
+var _is_dashing: bool = false
+var _dash_started_in_air: bool = false
+var _dash_time_left: float = 0.0
+
+# Only used to block AIR dash
+var _dash_cooldown_left: float = 0.0
+
+# Air dash usage control
+var _air_dash_used_this_air: bool = false
+var _start_cooldown_on_next_landing: bool = false
+
+# Cache animation length so air dash can play fully
+var _air_spin_anim_len: float = 0.0
+
+var state: PlayerState = PlayerState.IDLE
+var started: bool = false
+var was_on_floor: bool = false
+
+var coyote_time_left: float = 0.0
+var anchor_x: float = 0.0
+var _can_be_hit: bool = true
+
+var gm: GameManager
+var world: WorldRunner
+var fader: ScreenFader
+
+var _shake_left: float = 0.0
+var _cam_base_pos: Vector2 = Vector2.ZERO
+
+var _start_pos: Vector2 = Vector2.ZERO
+
+
+func _ready() -> void:
+	gm = get_parent().get_node("GameManager") as GameManager
+	world = get_parent().get_node("World") as WorldRunner
+	fader = get_tree().get_first_node_in_group("screen_fader") as ScreenFader
+
+	state = PlayerState.IDLE
+	started = false
+	velocity = Vector2.ZERO
+
+	_start_pos = global_position
+	anchor_x = global_position.x
+
+	# Default collision shapes
+	if standard_shape != null:
+		standard_shape.disabled = false
+	if dash_shape != null:
+		dash_shape.disabled = true
+
+	# Cache air_spin animation length so it doesn't get cut short
+	_air_spin_anim_len = _get_animation_length("air_spin")
+
+	if cam != null:
+		_cam_base_pos = cam.position
+
+
+func _physics_process(delta: float) -> void:
+	velocity.x = 0.0
+
+	_handle_gravity(delta)
+	_handle_coyote_time(delta)
+	_update_shake(delta)
+	_handle_dash(delta)
+
+	# During HIT: allow emergency jump
+	if state == PlayerState.HIT:
+		_handle_emergency_jump()
+		move_and_slide()
+		global_position.x = anchor_x
+		_check_fall_reset()
+		return
+
+	_handle_start_or_jump()
+	_handle_variable_jump()
+	_handle_state_machine()
+
+	move_and_slide()
+	global_position.x = anchor_x
+
+	_check_fall_reset()
+
+
+func _process(_delta: float) -> void:
+	_update_animation()
+
+
+func _speed_t() -> float:
+	if gm == null:
+		return 0.0
+	return clamp(gm.current_speed / gm.max_speed, 0.0, 1.0)
+
+
+func _effective_jump_velocity() -> float:
+	var t: float = _speed_t()
+	return lerp(jump_velocity_min, jump_velocity_max, t)
+
+
+func _effective_gravity_scale() -> float:
+	var t: float = _speed_t()
+	return lerp(gravity_scale_min, gravity_scale_max, t)
+
+
+func _handle_gravity(delta: float) -> void:
+	var g_scale: float = _effective_gravity_scale()
+
+	if _is_dashing:
+		g_scale *= dash_gravity_multiplier
+
+	if not is_on_floor():
+		velocity.y += base_gravity * g_scale * delta
+	else:
+		if velocity.y > 0.0:
+			velocity.y = 0.0
+
+
+func _handle_coyote_time(delta: float) -> void:
+	if is_on_floor():
+		coyote_time_left = coyote_time_max
+
+		# Reset air dash availability when back on floor
+		_air_dash_used_this_air = false
+
+		# Start cooldown only AFTER landing (for air dash only)
+		if _start_cooldown_on_next_landing:
+			_dash_cooldown_left = dash_cooldown
+			_start_cooldown_on_next_landing = false
+	else:
+		coyote_time_left -= delta
+
+
+func _handle_start_or_jump() -> void:
+	if gm != null and not gm.can_start:
+		return
+
+	if not Input.is_action_just_pressed("jump"):
+		return
+
+	if not started:
+		started = true
+		if gm != null:
+			gm.start_running()
+		state = PlayerState.WALK
+		return
+
+	if coyote_time_left > 0.0:
+		velocity.y = _effective_jump_velocity()
+		state = PlayerState.JUMP
+		coyote_time_left = 0.0
+
+
+func _handle_emergency_jump() -> void:
+	if gm != null and not gm.can_start:
+		return
+
+	if Input.is_action_just_pressed("jump") and coyote_time_left > 0.0:
+		velocity.y = _effective_jump_velocity()
+		coyote_time_left = 0.0
+
+
+func _handle_variable_jump() -> void:
+	if Input.is_action_just_released("jump"):
+		if velocity.y < 0.0:
+			velocity.y *= jump_cut_multiplier
+
+
+func _handle_state_machine() -> void:
+	if _is_dashing:
+		return
+
+	var on_floor: bool = is_on_floor()
+
+	if not started:
+		state = PlayerState.IDLE
+		was_on_floor = on_floor
+		return
+
+	var world_speed: float = 0.0
+	if gm != null:
+		world_speed = gm.current_speed
+
+	if not on_floor:
+		if velocity.y < 0.0:
+			state = PlayerState.JUMP
+		else:
+			state = PlayerState.FALL
+	else:
+		if not was_on_floor:
+			state = PlayerState.LAND
+		else:
+			if world_speed < run_threshold:
+				state = PlayerState.WALK
+			else:
+				state = PlayerState.RUN
+
+	was_on_floor = on_floor
+
+
+func _update_animation() -> void:
+	match state:
+		PlayerState.IDLE:
+			_play_if_not("idle")
+		PlayerState.WALK:
+			if anim.sprite_frames.has_animation("walk"):
+				_play_if_not("walk")
+			else:
+				_play_if_not("run")
+		PlayerState.RUN:
+			_play_if_not("run")
+		PlayerState.JUMP:
+			_play_if_not("jump")
+		PlayerState.FALL:
+			if anim.sprite_frames.has_animation("fall"):
+				_play_if_not("fall")
+			else:
+				_play_if_not("jump")
+		PlayerState.LAND:
+			_play_if_not("land")
+		PlayerState.HIT:
+			_play_if_not("hurt")
+		PlayerState.DASH:
+			# Air dash uses air_spin; ground dash uses dash
+			if _dash_started_in_air:
+				if anim.sprite_frames.has_animation("air_spin"):
+					_play_if_not("air_spin")
+				else:
+					if anim.sprite_frames.has_animation("dash"):
+						_play_if_not("dash")
+					else:
+						_play_if_not("run")
+			else:
+				if anim.sprite_frames.has_animation("dash"):
+					_play_if_not("dash")
+				else:
+					_play_if_not("run")
+
+
+func _play_if_not(anim_name: String) -> void:
+	if anim.animation != anim_name:
+		anim.play(anim_name)
+
+
+func apply_hit() -> void:
+	if not _can_be_hit:
+		return
+
+	_can_be_hit = false
+	state = PlayerState.HIT
+	_start_shake()
+
+	var timer := get_tree().create_timer(hit_lock_time)
+	timer.timeout.connect(_end_hit)
+
+
+func _end_hit() -> void:
+	_can_be_hit = true
+	if started:
+		state = PlayerState.FALL
+	else:
+		state = PlayerState.IDLE
+
+
+func _start_shake() -> void:
+	_shake_left = shake_time
+	if cam != null:
+		_cam_base_pos = cam.position
+
+
+func _update_shake(delta: float) -> void:
+	if cam == null:
+		return
+
+	if _shake_left > 0.0:
+		_shake_left -= delta
+		var off := Vector2(
+			randf_range(-shake_strength, shake_strength),
+			randf_range(-shake_strength, shake_strength)
+		)
+		cam.position = _cam_base_pos + off
+	else:
+		cam.position = _cam_base_pos
+
+
+func _check_fall_reset() -> void:
+	if global_position.y <= fall_reset_y:
+		return
+
+	_die_and_reset()
+
+
+func _die_and_reset() -> void:
+	if fader != null and fader.is_busy():
+		return
+
+	if gm != null:
+		gm.stop_running()
+
+	if fader != null:
+		fader.fade_reset_and_fade_in(Callable(self, "_reset_run"))
+	else:
+		_reset_run()
+
+
+func _reset_run() -> void:
+	global_position = _start_pos
+	anchor_x = _start_pos.x
+	velocity = Vector2.ZERO
+	state = PlayerState.IDLE
+	started = false
+	_can_be_hit = true
+
+	_is_dashing = false
+	_dash_started_in_air = false
+	_dash_time_left = 0.0
+	_dash_cooldown_left = 0.0
+	_air_dash_used_this_air = false
+	_start_cooldown_on_next_landing = false
+
+	if standard_shape != null:
+		standard_shape.disabled = false
+	if dash_shape != null:
+		dash_shape.disabled = true
+
+	if world != null:
+		world.reset_world()
+
+
+# ---------------- DASH ----------------
+
+func _handle_dash(delta: float) -> void:
+	# Cooldown countdown (ONLY blocks air dash)
+	if _dash_cooldown_left > 0.0:
+		_dash_cooldown_left -= delta
+
+	# Only allow dash after run started and while not hit
+	if not started or gm == null or not gm.running:
+		return
+	if state == PlayerState.HIT:
+		return
+
+	var on_floor: bool = is_on_floor()
+
+	# START dash
+	if Input.is_action_just_pressed("dash") and not _is_dashing:
+
+		# Air dash is restricted (single use + cooldown)
+		if not on_floor:
+			if _air_dash_used_this_air:
+				return
+			if _dash_cooldown_left > 0.0:
+				return
+
+		_is_dashing = true
+		_dash_started_in_air = not on_floor
+		state = PlayerState.DASH
+
+		# Collision shapes:
+		# - ground dash uses dash shape
+		# - air dash keeps standard shape
+		if _dash_started_in_air:
+			if standard_shape != null:
+				standard_shape.disabled = false
+			if dash_shape != null:
+				dash_shape.disabled = true
+		else:
+			if standard_shape != null:
+				standard_shape.disabled = true
+			if dash_shape != null:
+				dash_shape.disabled = false
+
+		# Speed boost
+		gm.current_speed += dash_speed_bonus
+		gm.current_speed = min(gm.current_speed, gm.max_speed)
+
+		if _dash_started_in_air:
+			# Air dash: short burst, ensure animation can play fully
+			var min_len: float = air_dash_duration
+			if _air_spin_anim_len > min_len:
+				min_len = _air_spin_anim_len
+
+			_dash_time_left = min_len
+			_air_dash_used_this_air = true
+
+			# cooldown begins after landing
+			_start_cooldown_on_next_landing = true
+
+			# air recovery
+			velocity.y = min(velocity.y, dash_air_boost_velocity)
+		else:
+			# Ground dash: holdable, long max duration
+			_dash_time_left = dash_duration
+
+	# MAINTAIN dash
+	if _is_dashing:
+
+		if _dash_started_in_air:
+			# Air dash cannot be held; just count down
+			_dash_time_left -= delta
+			if _dash_time_left <= 0.0:
+				_end_dash()
+				return
+
+		else:
+			# Ground dash stays while held
+			if not Input.is_action_pressed("dash"):
+				_end_dash()
+				return
+
+			if dash_duration > 0.0:
+				_dash_time_left -= delta
+				if _dash_time_left <= 0.0:
+					_end_dash()
+					return
+
+			# sustain push on ground dash
+			gm.current_speed += (dash_speed_bonus * 0.5) * delta
+			gm.current_speed = min(gm.current_speed, gm.max_speed)
+
+
+func _end_dash() -> void:
+	_is_dashing = false
+	_dash_started_in_air = false
+
+	# Restore standard collision shape
+	if standard_shape != null:
+		standard_shape.disabled = false
+	if dash_shape != null:
+		dash_shape.disabled = true
+
+	# No cooldown for ground dash. Air dash cooldown starts on landing via _start_cooldown_on_next_landing.
+
+	# Leave dash state cleanly
+	if not is_on_floor():
+		state = PlayerState.FALL
+	else:
+		var ws: float = gm.current_speed if gm != null else 0.0
+		if ws < run_threshold:
+			state = PlayerState.WALK
+		else:
+			state = PlayerState.RUN
+
+
+func _get_animation_length(anim_name: String) -> float:
+	if anim == null:
+		return 0.0
+	if anim.sprite_frames == null:
+		return 0.0
+	if not anim.sprite_frames.has_animation(anim_name):
+		return 0.0
+
+	var frames: int = anim.sprite_frames.get_frame_count(anim_name)
+	var speed: float = anim.sprite_frames.get_animation_speed(anim_name)
+
+	if speed <= 0.0:
+		return 0.0
+
+	return float(frames) / speed
+
+
+---- FILE: .\scripts\screen_fader.gd ----
+extends CanvasLayer
+class_name ScreenFader
+
+@onready var flash: ColorRect = $Flash
+@onready var gm: GameManager = get_tree().get_first_node_in_group("game_manager") as GameManager
+
+@export var fade_out_time: float = 0.18
+@export var hold_time: float = 0.05
+@export var fade_in_time: float = 0.22
+
+var _busy: bool = false
+
+func _ready() -> void:
+	add_to_group("screen_fader")
+	flash.color = Color(1, 1, 1, 0)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+func is_busy() -> bool:
+	return _busy
+
+func fade_reset_and_fade_in(reset_callable: Callable) -> void:
+	if _busy:
+		return
+	_busy = true
+
+	if gm != null:
+		gm.can_start = false
+
+	# Fade to white
+	var t_out := create_tween()
+	t_out.tween_property(flash, "color:a", 1.0, fade_out_time)
+	await t_out.finished
+
+	# Small hold at white
+	if hold_time > 0.0:
+		await get_tree().create_timer(hold_time).timeout
+
+	# Perform reset
+	if reset_callable.is_valid():
+		reset_callable.call()
+
+	# Fade back to transparent
+	var t_in := create_tween()
+	t_in.tween_property(flash, "color:a", 0.0, fade_in_time)
+	await t_in.finished
+
+	if gm != null:
+		gm.can_start = true
+
+	_busy = false
+
+
+---- FILE: .\scripts\ui.gd ----
+extends CanvasLayer
+
+@onready var label: Label = $ScoreLabel
+var gm: GameManager
+
+func _ready():
+	gm = get_parent().get_node("GameManager")
+
+func _process(_delta):
+	if gm == null:
+		return
+
+	label.text = "Score: %d\nHighscore: %d" % [
+		int(gm.current_score),
+		int(gm.highscore)
+	]
+
+
+---- FILE: .\scripts\world.gd ----
+extends Node2D
+class_name WorldRunner
+
+@export var segment_width: float = 1056.0
+@export var wrap_buffer: float = 400.0
+
+# Height variation (jumpable)
+@export var max_step_offset: float = 20.0
+@export var max_total_offset: float = 60.0
+
+# DEBUG
+@export var dbg_enabled: bool = true
+@export var dbg_print_every_frames: int = 30
+
+var gm: GameManager
+var player: Node2D
+var segments: Array[Node2D] = []
+
+var _dbg_frame: int = 0
+
+# Track height baseline (absolute Y in world space)
+var _track_base_y: float = 0.0
+var _last_height_offset: float = 0.0
+
+# Pending wrap (store by instance id so we always hit the same node)
+var _pending_wrap_id: int = 0
+var _pending_wrap_x: float = 0.0
+var _pending_wrap_off: float = 0.0
+
+func _ready() -> void:
+	randomize()
+
+	gm = get_parent().get_node("GameManager") as GameManager
+	player = get_parent().get_node("Player") as Node2D
+
+	segments.clear()
+	for child in get_children():
+		if child is Node2D:
+			segments.append(child)
+
+	if segments.size() > 0:
+		_track_base_y = segments[0].position.y
+	else:
+		_track_base_y = 0.0
+
+	_last_height_offset = 0.0
+	_pending_wrap_id = 0
+
+	if dbg_enabled:
+		print("[WORLD] ready segments=", segments.size(), " names=", segments.map(func(n): return n.name), " base_y=", _track_base_y)
+
+func _physics_process(delta: float) -> void:
+	_dbg_frame += 1
+
+	if gm == null or player == null:
+		return
+
+	# Apply pending wrap first (next-frame apply)
+	_apply_pending_wrap()
+
+	if gm.current_speed <= 0.0:
+		if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0):
+			print("[WORLD] speed<=0 running=", gm.running, " speed=", snappedf(gm.current_speed, 0.01))
+		return
+
+	var dx: float = gm.current_speed * delta
+
+	for s in segments:
+		s.position.x -= dx
+
+	if dbg_enabled and (_dbg_frame % dbg_print_every_frames == 0) and segments.size() >= 2:
+		print("[WORLD] dx=", snappedf(dx, 0.01),
+			" A(", segments[0].name, ") x=", snappedf(segments[0].position.x, 0.01), " y=", snappedf(segments[0].position.y, 0.01),
+			" B(", segments[1].name, ") x=", snappedf(segments[1].position.x, 0.01), " y=", snappedf(segments[1].position.y, 0.01))
+
+	_schedule_wrap_if_needed()
+
+func _schedule_wrap_if_needed() -> void:
+	# Only one scheduled wrap at a time
+	if _pending_wrap_id != 0:
+		return
+
+	if segments.size() < 2:
+		return
+
+	var half_w: float = segment_width / 2.0
+	var left_limit: float = player.global_position.x - wrap_buffer
+
+	# Find leftmost and rightmost by X
+	var leftmost: Node2D = segments[0]
+	var rightmost: Node2D = segments[0]
+
+	for s in segments:
+		if s.position.x < leftmost.position.x:
+			leftmost = s
+		if s.position.x > rightmost.position.x:
+			rightmost = s
+
+	var right_edge_leftmost: float = leftmost.position.x + half_w
+	if right_edge_leftmost >= left_limit:
+		return
+
+	# Schedule wrap for next frame using instance ID
+	_pending_wrap_id = leftmost.get_instance_id()
+
+	# Place after rightmost
+	_pending_wrap_x = rightmost.position.x + segment_width
+
+	# Generate next height offset (typed)
+	_pending_wrap_off = clampf(
+		_last_height_offset + randf_range(-max_step_offset, max_step_offset),
+		-max_total_offset,
+		max_total_offset
+	)
+
+	_last_height_offset = _pending_wrap_off
+
+	if dbg_enabled:
+		print("[WORLD][SCHEDULE_WRAP] seg=", leftmost.name,
+			" id=", _pending_wrap_id,
+			" old_x=", snappedf(leftmost.position.x, 0.01),
+			" right_edge=", snappedf(right_edge_leftmost, 0.01),
+			" left_limit=", snappedf(left_limit, 0.01),
+			" new_x(next)=", snappedf(_pending_wrap_x, 0.01),
+			" off(next)=", snappedf(_pending_wrap_off, 0.01))
+
+func _apply_pending_wrap() -> void:
+	if _pending_wrap_id == 0:
+		return
+
+	# Find the exact node by instance id
+	var node: Node2D = null
+	for s in segments:
+		if s.get_instance_id() == _pending_wrap_id:
+			node = s
+			break
+
+	if node == null:
+		if dbg_enabled:
+			print("[WORLD][APPLY_WRAP] pending id not found, clearing id=", _pending_wrap_id)
+		_pending_wrap_id = 0
+		return
+
+	# Apply new position deterministically (WorldRunner owns X+Y here)
+	node.position.x = _pending_wrap_x
+	node.position.y = _track_base_y + _pending_wrap_off
+
+	# Only reconfigure content once per actual wrap
+	if node is GroundSegment:
+		var gs := node as GroundSegment
+		gs.segment_height_offset = _pending_wrap_off  # optional, for your own tracking
+		gs.configure_with_difficulty(gm.current_speed, gm.max_speed)
+
+	if dbg_enabled:
+		print("[WORLD][APPLY_WRAP] seg=", node.name,
+			" id=", _pending_wrap_id,
+			" x=", snappedf(node.position.x, 0.01),
+			" y=", snappedf(node.position.y, 0.01),
+			" off=", snappedf(_pending_wrap_off, 0.01))
+
+	_pending_wrap_id = 0
+
+func reset_world() -> void:
+	var half_w: float = segment_width / 2.0
+
+	segments.sort_custom(func(a: Node2D, b: Node2D) -> bool:
+		return a.position.x < b.position.x
+	)
+
+	_last_height_offset = 0.0
+	_pending_wrap_id = 0
+
+	# Reset baseline to current first segment height
+	if segments.size() > 0:
+		_track_base_y = segments[0].position.y
+
+	for i in range(segments.size()):
+		var s := segments[i]
+		s.position.x = half_w + float(i) * segment_width
+		s.position.y = _track_base_y
+
+		if s is GroundSegment:
+			var gs := s as GroundSegment
+			gs.clear_obstacles()
+			gs.configure_no_gap()
+			gs.segment_height_offset = 0.0

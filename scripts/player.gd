@@ -69,7 +69,7 @@ var anchor_x: float = 0.0
 var _can_be_hit: bool = true
 
 var gm: GameManager
-var world: WorldRunner
+var spawner: LevelSpawner
 var fader: ScreenFader
 
 var _shake_left: float = 0.0
@@ -80,7 +80,7 @@ var _start_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	gm = get_parent().get_node("GameManager") as GameManager
-	world = get_parent().get_node("World") as WorldRunner
+	spawner = get_parent().get_node("LevelSpawner") as LevelSpawner
 	fader = get_tree().get_first_node_in_group("screen_fader") as ScreenFader
 
 	state = PlayerState.IDLE
@@ -363,14 +363,15 @@ func _reset_run() -> void:
 	_dash_cooldown_left = 0.0
 	_air_dash_used_this_air = false
 	_start_cooldown_on_next_landing = false
-
+	floor_snap_length = 0.0
+	
 	if standard_shape != null:
 		standard_shape.disabled = false
 	if dash_shape != null:
 		dash_shape.disabled = true
 
-	if world != null:
-		world.reset_world()
+	if spawner != null:
+		spawner.reset_spawner()
 
 
 # ---------------- DASH ----------------

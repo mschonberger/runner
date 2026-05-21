@@ -2,15 +2,18 @@ extends Node
 class_name GameManager
 
 @export var base_speed: float = 0.0
-@export var start_speed: float = 180.0
-@export var accel: float = 220.0
-@export var max_speed: float = 650.0
+@export var start_speed: float = 250.0
+@export var max_speed: float = 950.0
 
-# Stronger penalties
+@export var accel_speed_factor: float = 0.4
+
 @export var penalty_flat: float = 160.0
 @export var penalty_speed_fraction: float = 0.22
 @export var hit_impact_multiplier: float = 0.70
 @export var min_speed_floor: float = 80.0
+
+@export var post_hit_suppression_time: float = 2.5 # Seconds before acceleration restores
+var _suppression_timer: float = 0.0
 
 var current_speed: float = 0.0
 var running: bool = false
@@ -27,14 +30,18 @@ func _ready() -> void:
 	_load_highscore()
 
 func _physics_process(delta: float) -> void:
-	if not running:
-		return
+	# score
+	current_score += current_speed * delta * 0.1
 
-	if running:
-		current_score += current_speed * delta * 0.1
-
-	current_speed += accel * delta
-	current_speed = min(current_speed, max_speed)
+	if _suppression_timer > 0.0:
+		_suppression_timer -= delta
+	else: # Only apply acceleration if the player hasn't crashed recently!
+		# Calculate how far we are from top speed (0.0 = at base, 1.0 = at max speed)
+		var speed_percentage: float = current_speed / max_speed
+		# Dynamic easing: Accelerate faster when moving slow, slower when moving fast
+		var dynamic_accel: float = lerp(320.0, 45.0, speed_percentage)
+		current_speed += dynamic_accel * delta
+		current_speed = min(current_speed, max_speed)
 
 func start_running() -> void:
 	if running:
@@ -45,17 +52,15 @@ func start_running() -> void:
 func stop_running() -> void:
 	running = false
 	current_speed = base_speed
-	
+
 	if current_score > highscore:
 		highscore = current_score
 		_save_highscore()
 
 	current_score = 0.0
 
-
-
-
 func apply_speed_penalty(extra_amount: float) -> void:
+
 	# Immediate impact slam
 	current_speed *= hit_impact_multiplier
 
@@ -64,6 +69,7 @@ func apply_speed_penalty(extra_amount: float) -> void:
 	var total: float = penalty_flat + scaled + extra_amount
 
 	current_speed = max(min_speed_floor, current_speed - total)
+	_suppression_timer = post_hit_suppression_time
 
 func _load_highscore() -> void:
 	if FileAccess.file_exists("user://save.dat"):

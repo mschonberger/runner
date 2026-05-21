@@ -7,9 +7,22 @@
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_l4x32"]
 size = Vector2(1056, 64)
 
-[node name="GroundSegment" type="AnimatableBody2D"]
+[node name="GroundSegment" type="StaticBody2D"]
 script = ExtResource("1_l4x32")
+segment_width = null
+segment_height = null
+tile_size = null
+side_margin_tiles = null
+max_jumpable_tiles = null
+max_flat_segments = null
 obstacle_scene = ExtResource("2_l4x32")
+obstacle_chance_min = null
+obstacle_chance_max = null
+min_solid_tiles_for_obstacle = null
+gap_guard_tiles = null
+obstacle_half_width_px = null
+segment_edge_margin_px = null
+dbg_enabled = null
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("3_1yva4")
