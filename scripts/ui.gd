@@ -1,8 +1,10 @@
+# res://scripts/ui.gd
 extends CanvasLayer
 
 @onready var label: Label = $ScoreLabel
 @onready var start_label: Label = $StartLabel
 @onready var controls_label: Label = $ControlsLabel
+@onready var touch_label: Label = $TouchControlsLabel # Hooked up successfully!
 
 var gm: GameManager
 var blink_timer: float = 0.0
@@ -16,7 +18,11 @@ func _ready() -> void:
 	gm = get_parent().get_node("GameManager")
 	if gm != null:
 		gm.highscore_achieved.connect(_on_highscore_triggered)
-		
+	
+	# Initial structural state check
+	if touch_label:
+		touch_label.visible = true
+	
 	_setup_initial_ui_text()
 	_build_procedural_entry_ui()
 
@@ -31,9 +37,13 @@ func _process(delta: float) -> void:
 	if gm.running or entry_panel.visible:
 		if start_label != null: start_label.visible = false
 		if controls_label != null: controls_label.visible = false
+		# 🚨 NEW: Hide touch control instructions instantly when playing or entering highscores
+		if touch_label != null: touch_label.visible = false
 	else:
 		if start_label != null: start_label.visible = true
 		if controls_label != null: controls_label.visible = true
+		# 🚨 NEW: Restore touch control hints on the idle start screen
+		if touch_label != null: touch_label.visible = true
 		
 		blink_timer += delta
 		if start_label != null:

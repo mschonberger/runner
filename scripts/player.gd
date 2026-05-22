@@ -176,7 +176,6 @@ func _handle_coyote_time(delta: float) -> void:
 	else:
 		coyote_time_left -= delta
 
-
 func _handle_start_or_jump() -> void:
 	if gm != null and not gm.can_start:
 		return
@@ -184,17 +183,15 @@ func _handle_start_or_jump() -> void:
 	if not Input.is_action_just_pressed("jump"):
 		return
 
+	# 🚨 THE REFINEMENT: Wake up the game on the first press, then stop executing!
 	if not started:
 		started = true
 		if gm != null:
 			gm.start_running()
-		
-		# Give an immediate upward jump velocity when kicking off from the start screen
-		velocity.y = _effective_jump_velocity()
-		state = PlayerState.JUMP
-		coyote_time_left = 0.0
-		return
+		state = PlayerState.WALK
+		return # 👈 CRITICAL: This prevents the code below from executing on the first frame!
 
+	# Any button presses AFTER the game has started will pass through safely down here
 	if coyote_time_left > 0.0:
 		velocity.y = _effective_jump_velocity()
 		state = PlayerState.JUMP
@@ -367,12 +364,11 @@ func _reset_run() -> void:
 	_dash_cooldown_left = 0.0
 	_air_dash_used_this_air = false
 	_start_cooldown_on_next_landing = false
-	floor_snap_length = 0.0
-	
+
 	if standard_shape != null:
-		standard_shape.disabled = false
+		standard_shape.set_deferred("disabled", false)
 	if dash_shape != null:
-		dash_shape.disabled = true
+		dash_shape.set_deferred("disabled", true)
 
 	if spawner != null:
 		spawner.reset_spawner()
