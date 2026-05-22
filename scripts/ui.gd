@@ -73,7 +73,7 @@ func _setup_initial_ui_text() -> void:
 func _build_procedural_entry_ui() -> void:
 	entry_panel = PanelContainer.new()
 	entry_panel.visible = false
-	entry_panel.custom_minimum_size = Vector2(320, 140)
+	entry_panel.custom_minimum_size = Vector2(340, 180) # Made slightly taller for the cancel button
 	entry_panel.set_anchors_preset(Control.PRESET_CENTER)
 	entry_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	entry_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -104,10 +104,16 @@ func _build_procedural_entry_ui() -> void:
 	vbox.add_child(name_input)
 	
 	var hint := Label.new()
-	hint.text = "Press Enter to Save"
+	hint.text = "Press Enter to Save\n(Or tap field to reopen keyboard)"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.modulate.a = 0.6
 	vbox.add_child(hint)
+
+	# 🚨 FIX: Add a explicit cancel/skip button for mobile users
+	var cancel_btn := Button.new()
+	cancel_btn.text = "SKIP / CANCEL"
+	cancel_btn.pressed.connect(_on_highscore_cancelled)
+	vbox.add_child(cancel_btn)
 
 func _on_highscore_triggered(score_value: float) -> void:
 	pending_highscore_value = score_value
@@ -120,7 +126,24 @@ func _on_name_submitted(new_text: String) -> void:
 	gm.add_leaderboard_entry(new_text, pending_highscore_value)
 
 func _on_name_input_clicked(event: InputEvent) -> void:
-	# Check if the player explicitly tapped or pressed down on the text block field
 	if event is InputEventMouseButton and event.is_pressed():
-		# Force Godot to re-request the software keyboard from iOS or Android OS
+		# 🚨 FIX: Explicitly clear focus and grab it fresh. 
+		# This forces a state change that the web/mobile bridge registers cleanly.
+		name_input.release_focus()
+		name_input.grab_focus()
+		
+		# Move caret to the end of the line text
+		name_input.caret_column = name_input.text.length()
+		
+		# Explicitly command the virtual keyboard to wake up
 		DisplayServer.virtual_keyboard_show(name_input.text, name_input.get_global_rect(), name_input.max_length)
+
+
+# 🚨 FIX: New callback method to cleanly handle cancellation
+func _on_highscore_cancelled() -> void:
+	entry_panel.visible = false
+	DisplayServer.virtual_keyboard_hide()
+	
+	if gm != null:
+		# Save it under a generic fallback name or completely skip it
+		gm.add_leaderboard_entry("GUEST", pending_highscore_value)
