@@ -1,0 +1,16 @@
+[gd_scene load_steps=4 format=3 uid="uid://dgrqmkcjcunss"]
+
+[ext_resource type="Script" uid="uid://b823c5fv6ilv6" path="res://scripts/moving_deadly_obstacle.gd" id="1_snquu"]
+[ext_resource type="Texture2D" uid="uid://d7pw8k7keprk" path="res://art/floor/DeadlyObstacle.png" id="2_44fx4"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rpm1t"]
+size = Vector2(48, 48)
+
+[node name="MovingDeadlyObstacle" type="Area2D"]
+script = ExtResource("1_snquu")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_44fx4")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_rpm1t")

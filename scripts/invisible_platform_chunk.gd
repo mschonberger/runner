@@ -8,6 +8,7 @@ extends PlatformChunk
 var _is_hidden: bool = false
 
 func _ready() -> void:
+	chunk_width = 528.0
 	if sprite == null:
 		push_error("InvisiblePlatformChunk: Missing Sprite2D child node!")
 	else:

@@ -101,3 +101,6 @@ func _generate_corridor_hazards() -> void:
 		
 		obstacle.z_index = 10
 		add_child(obstacle)
+		
+func randomize_chunk_width() -> void:
+	chunk_width = 1584

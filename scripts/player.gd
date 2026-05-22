@@ -69,6 +69,7 @@ var fader: ScreenFader
 
 var _shake_left: float = 0.0
 var _cam_base_pos: Vector2 = Vector2.ZERO
+var _is_shaking_continuously: bool = false
 
 var _start_pos: Vector2 = Vector2.ZERO
 
@@ -296,11 +297,15 @@ func _update_shake(delta: float) -> void:
 	if cam == null:
 		return
 
-	if _shake_left > 0.0:
-		_shake_left -= delta
+	if _is_shaking_continuously or _shake_left > 0.0:
+		if _shake_left > 0.0:
+			_shake_left -= delta
+			
+		var current_strength = shake_strength * 1.5 if _is_shaking_continuously else shake_strength
+		
 		var off := Vector2(
-			randf_range(-shake_strength, shake_strength),
-			randf_range(-shake_strength, shake_strength)
+			randf_range(-current_strength, current_strength),
+			randf_range(-current_strength, current_strength)
 		)
 		cam.position = _cam_base_pos + off
 	else:
@@ -333,6 +338,7 @@ func _reset_run() -> void:
 	_can_be_hit = true
 
 	_is_dashing = false
+	_is_shaking_continuously = false
 	_dash_started_in_air = false
 	_dash_time_left = 0.0
 	_dash_cooldown_left = 0.0
@@ -487,3 +493,8 @@ func _check_wall_collisions() -> void:
 							_die_and_reset()
 				)
 				break
+
+func set_continuous_shake(is_shaking: bool) -> void:
+	_is_shaking_continuously = is_shaking
+	if is_shaking and cam != null:
+		_cam_base_pos = cam.position

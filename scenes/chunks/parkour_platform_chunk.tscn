@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3 uid="uid://csn7824xxdkpw"]
+
+[ext_resource type="Script" uid="uid://dbkvbqsv8me0t" path="res://scripts/parkour_platform_chunk.gd" id="1_awbvl"]
+[ext_resource type="Texture2D" uid="uid://ciajbnws060l0" path="res://art/floor/GroundB2.png" id="2_eunwk"]
+[ext_resource type="PackedScene" uid="uid://dgrqmkcjcunss" path="res://scenes/moving_deadly_obstacle.tscn" id="2_iii6t"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_eunwk"]
+size = Vector2(2112, 64)
+
+[node name="ParkourPlatformChunk" type="StaticBody2D"]
+script = ExtResource("1_awbvl")
+moving_deadly_obstacle_scene = ExtResource("2_iii6t")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_eunwk")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_eunwk")
