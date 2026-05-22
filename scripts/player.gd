@@ -36,12 +36,10 @@ enum PlayerState {
 
 @export var fall_reset_y: float = 900.0
 
-# Dash
 @export var dash_speed_bonus: float = 300.0
 @export var dash_duration: float = 99.0
 @export var dash_cooldown: float = 1.0
 
-# Air dash
 @export var air_dash_duration: float = 0.18
 @export var dash_air_boost_velocity: float = -220.0
 @export var dash_gravity_multiplier: float = 1.20
@@ -50,14 +48,11 @@ var _is_dashing: bool = false
 var _dash_started_in_air: bool = false
 var _dash_time_left: float = 0.0
 
-# Only used to block AIR dash
 var _dash_cooldown_left: float = 0.0
 
-# Air dash usage control
 var _air_dash_used_this_air: bool = false
 var _start_cooldown_on_next_landing: bool = false
 
-# Cache animation length so air dash can play fully
 var _air_spin_anim_len: float = 0.0
 
 var state: PlayerState = PlayerState.IDLE
@@ -90,13 +85,11 @@ func _ready() -> void:
 	_start_pos = global_position
 	anchor_x = global_position.x
 
-	# Default collision shapes
 	if standard_shape != null:
 		standard_shape.disabled = false
 	if dash_shape != null:
 		dash_shape.disabled = true
 
-	# Cache air_spin animation length so it doesn't get cut short
 	_air_spin_anim_len = _get_animation_length("air_spin")
 
 	if cam != null:
@@ -111,7 +104,6 @@ func _physics_process(delta: float) -> void:
 	_update_shake(delta)
 	_handle_dash(delta)
 
-	# During HIT: allow emergency jump
 	if state == PlayerState.HIT:
 		_handle_emergency_jump()
 		move_and_slide()
@@ -124,14 +116,13 @@ func _physics_process(delta: float) -> void:
 	_handle_state_machine()
 
 	move_and_slide()
+	_check_wall_collisions()
 	global_position.x = anchor_x
 
 	_check_fall_reset()
 
-
 func _process(_delta: float) -> void:
 	_update_animation()
-
 
 func _speed_t() -> float:
 	if gm == null:
@@ -166,10 +157,8 @@ func _handle_coyote_time(delta: float) -> void:
 	if is_on_floor():
 		coyote_time_left = coyote_time_max
 
-		# Reset air dash availability when back on floor
 		_air_dash_used_this_air = false
 
-		# Start cooldown only AFTER landing (for air dash only)
 		if _start_cooldown_on_next_landing:
 			_dash_cooldown_left = dash_cooldown
 			_start_cooldown_on_next_landing = false
@@ -183,20 +172,17 @@ func _handle_start_or_jump() -> void:
 	if not Input.is_action_just_pressed("jump"):
 		return
 
-	# 🚨 THE REFINEMENT: Wake up the game on the first press, then stop executing!
 	if not started:
 		started = true
 		if gm != null:
 			gm.start_running()
 		state = PlayerState.WALK
-		return # 👈 CRITICAL: This prevents the code below from executing on the first frame!
+		return
 
-	# Any button presses AFTER the game has started will pass through safely down here
 	if coyote_time_left > 0.0:
 		velocity.y = _effective_jump_velocity()
 		state = PlayerState.JUMP
 		coyote_time_left = 0.0
-
 
 func _handle_emergency_jump() -> void:
 	if gm != null and not gm.can_start:
@@ -206,12 +192,10 @@ func _handle_emergency_jump() -> void:
 		velocity.y = _effective_jump_velocity()
 		coyote_time_left = 0.0
 
-
 func _handle_variable_jump() -> void:
 	if Input.is_action_just_released("jump"):
 		if velocity.y < 0.0:
 			velocity.y *= jump_cut_multiplier
-
 
 func _handle_state_machine() -> void:
 	if _is_dashing:
@@ -241,9 +225,7 @@ func _handle_state_machine() -> void:
 				state = PlayerState.WALK
 			else:
 				state = PlayerState.RUN
-
 	was_on_floor = on_floor
-
 
 func _update_animation() -> void:
 	match state:
@@ -283,11 +265,9 @@ func _update_animation() -> void:
 				else:
 					_play_if_not("run")
 
-
 func _play_if_not(anim_name: String) -> void:
 	if anim.animation != anim_name:
 		anim.play(anim_name)
-
 
 func apply_hit() -> void:
 	if not _can_be_hit:
@@ -300,7 +280,6 @@ func apply_hit() -> void:
 	var timer := get_tree().create_timer(hit_lock_time)
 	timer.timeout.connect(_end_hit)
 
-
 func _end_hit() -> void:
 	_can_be_hit = true
 	if started:
@@ -308,12 +287,10 @@ func _end_hit() -> void:
 	else:
 		state = PlayerState.IDLE
 
-
 func _start_shake() -> void:
 	_shake_left = shake_time
 	if cam != null:
 		_cam_base_pos = cam.position
-
 
 func _update_shake(delta: float) -> void:
 	if cam == null:
@@ -329,13 +306,11 @@ func _update_shake(delta: float) -> void:
 	else:
 		cam.position = _cam_base_pos
 
-
 func _check_fall_reset() -> void:
 	if global_position.y <= fall_reset_y:
 		return
 
 	_die_and_reset()
-
 
 func _die_and_reset() -> void:
 	if fader != null and fader.is_busy():
@@ -348,7 +323,6 @@ func _die_and_reset() -> void:
 		fader.fade_reset_and_fade_in(Callable(self, "_reset_run"))
 	else:
 		_reset_run()
-
 
 func _reset_run() -> void:
 	global_position = _start_pos
@@ -373,15 +347,11 @@ func _reset_run() -> void:
 	if spawner != null:
 		spawner.reset_spawner()
 
-
-# ---------------- DASH ----------------
-
 func _handle_dash(delta: float) -> void:
 	# Cooldown countdown (ONLY blocks air dash)
 	if _dash_cooldown_left > 0.0:
 		_dash_cooldown_left -= delta
 
-	# Only allow dash after run started and while not hit
 	if not started or gm == null or not gm.running:
 		return
 	if state == PlayerState.HIT:
@@ -389,10 +359,8 @@ func _handle_dash(delta: float) -> void:
 
 	var on_floor: bool = is_on_floor()
 
-	# START dash
 	if Input.is_action_just_pressed("dash") and not _is_dashing:
 
-		# Air dash is restricted (single use + cooldown)
 		if not on_floor:
 			if _air_dash_used_this_air:
 				return
@@ -403,9 +371,6 @@ func _handle_dash(delta: float) -> void:
 		_dash_started_in_air = not on_floor
 		state = PlayerState.DASH
 
-		# Collision shapes:
-		# - ground dash uses dash shape
-		# - air dash keeps standard shape
 		if _dash_started_in_air:
 			if standard_shape != null:
 				standard_shape.disabled = false
@@ -417,12 +382,10 @@ func _handle_dash(delta: float) -> void:
 			if dash_shape != null:
 				dash_shape.disabled = false
 
-		# Speed boost
 		gm.current_speed += dash_speed_bonus
 		gm.current_speed = min(gm.current_speed, gm.max_speed)
 
 		if _dash_started_in_air:
-			# Air dash: short burst, ensure animation can play fully
 			var min_len: float = air_dash_duration
 			if _air_spin_anim_len > min_len:
 				min_len = _air_spin_anim_len
@@ -430,27 +393,21 @@ func _handle_dash(delta: float) -> void:
 			_dash_time_left = min_len
 			_air_dash_used_this_air = true
 
-			# cooldown begins after landing
 			_start_cooldown_on_next_landing = true
 
-			# air recovery
 			velocity.y = min(velocity.y, dash_air_boost_velocity)
 		else:
-			# Ground dash: holdable, long max duration
 			_dash_time_left = dash_duration
 
-	# MAINTAIN dash
 	if _is_dashing:
 
 		if _dash_started_in_air:
-			# Air dash cannot be held; just count down
 			_dash_time_left -= delta
 			if _dash_time_left <= 0.0:
 				_end_dash()
 				return
 
 		else:
-			# Ground dash stays while held
 			if not Input.is_action_pressed("dash"):
 				_end_dash()
 				return
@@ -461,7 +418,6 @@ func _handle_dash(delta: float) -> void:
 					_end_dash()
 					return
 
-			# sustain push on ground dash
 			gm.current_speed += (dash_speed_bonus * 0.5) * delta
 			gm.current_speed = min(gm.current_speed, gm.max_speed)
 
@@ -470,15 +426,11 @@ func _end_dash() -> void:
 	_is_dashing = false
 	_dash_started_in_air = false
 
-	# Restore standard collision shape
 	if standard_shape != null:
 		standard_shape.disabled = false
 	if dash_shape != null:
 		dash_shape.disabled = true
 
-	# No cooldown for ground dash. Air dash cooldown starts on landing via _start_cooldown_on_next_landing.
-
-	# Leave dash state cleanly
 	if not is_on_floor():
 		state = PlayerState.FALL
 	else:
@@ -504,3 +456,34 @@ func _get_animation_length(anim_name: String) -> float:
 		return 0.0
 
 	return float(frames) / speed
+
+func _check_wall_collisions() -> void:
+	if not started or state == PlayerState.HIT:
+		return
+
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var collider := collision.get_collider()
+
+		if collider is PlatformChunk:
+			var normal := collision.get_normal()
+			
+			if normal.x < -0.7 and abs(normal.y) < 0.5:
+				coyote_time_left = 0.0
+				
+				started = false
+				
+				apply_hit()
+				
+				if gm != null:
+					gm.current_speed = 0.0
+					gm.running = false
+				
+				velocity.y = 0.0 
+				
+				get_tree().create_timer(0.4).timeout.connect(
+					func(): 
+						if not started:
+							_die_and_reset()
+				)
+				break
