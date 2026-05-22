@@ -100,6 +100,7 @@ func _build_procedural_entry_ui() -> void:
 	name_input.max_length = 8
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_input.text_submitted.connect(_on_name_submitted)
+	name_input.gui_input.connect(_on_name_input_clicked)
 	vbox.add_child(name_input)
 	
 	var hint := Label.new()
@@ -117,3 +118,9 @@ func _on_highscore_triggered(score_value: float) -> void:
 func _on_name_submitted(new_text: String) -> void:
 	entry_panel.visible = false
 	gm.add_leaderboard_entry(new_text, pending_highscore_value)
+
+func _on_name_input_clicked(event: InputEvent) -> void:
+	# Check if the player explicitly tapped or pressed down on the text block field
+	if event is InputEventMouseButton and event.is_pressed():
+		# Force Godot to re-request the software keyboard from iOS or Android OS
+		DisplayServer.virtual_keyboard_show(name_input.text, name_input.get_global_rect(), name_input.max_length)

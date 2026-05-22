@@ -1,0 +1,25 @@
+[gd_scene load_steps=5 format=3 uid="uid://bdeggx5uihfy8"]
+
+[ext_resource type="Texture2D" uid="uid://d07ctn5t31miv" path="res://art/floor/GroundE.png" id="1_gexo6"]
+[ext_resource type="Script" uid="uid://bg3gy7tnbwvi" path="res://scripts/corridor_platform_chunk.gd" id="1_y01lf"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_y01lf"]
+size = Vector2(1584, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ro3yo"]
+size = Vector2(1584, 64)
+
+[node name="CorridorPlatformChunk" type="StaticBody2D"]
+script = ExtResource("1_y01lf")
+
+[node name="SolidFloor" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_y01lf")
+
+[node name="SolidCeiling" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_ro3yo")
+
+[node name="FloorSprite" type="Sprite2D" parent="."]
+texture = ExtResource("1_gexo6")
+
+[node name="CeilingSprite" type="Sprite2D" parent="."]
+texture = ExtResource("1_gexo6")

@@ -74,5 +74,6 @@ func _generate_massive_gauntlet() -> void:
 			spawn_y = ground_y - 24.0
 		
 		obstacle.position = Vector2(spawn_x, spawn_y)
+		obstacle.scale = Vector2(0.6, 0.6)
 		obstacle.z_index = 10
 		add_child(obstacle)
