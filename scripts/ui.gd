@@ -9,25 +9,28 @@ var gm: GameManager
 var blink_timer: float = 0.0
 var blink_speed: float = 4.5
 
+# Custom Virtual Keyboard Containers
 var entry_panel: PanelContainer
-var name_input: LineEdit
-var title_label: Label # Reference pointer to dynamically change title text
-var pending_highscore_value: float = 0.0
+var display_name_label: Label
+var title_label: Label 
+var mobile_controls_node: CanvasLayer = null
 
 var global_highest_score: int = 0
 var global_leaderboard_text: String = "Loading global leaderboard..."
+var entered_string: String = ""
 
 func _ready() -> void:
-	gm = get_parent().get_node("GameManager") as GameManager
-	if gm != null:
-		gm.highscore_achieved.connect(_on_highscore_triggered)
-
+	gm = get_tree().get_first_node_in_group("game_manager") as GameManager
+	mobile_controls_node = get_parent().get_node_or_null("MobileControls")
+	
+	_build_procedural_virtual_keyboard_ui()
 	_setup_initial_ui_text()
-	_build_procedural_entry_ui()
-	await get_tree().create_timer(1).timeout
-	await fetch_global_scores()
-	await get_tree().create_timer(1).timeout
-	await fetch_global_scores()
+	
+	# Check if name selection onboarding is required at start
+	if gm.player_name == "Guest" or gm.player_name.strip_edges().is_empty():
+		_open_name_onboarding()
+	else:
+		_complete_onboarding(gm.player_name)
 
 func _process(delta: float) -> void:
 	if gm == null:
@@ -68,83 +71,129 @@ func _setup_initial_ui_text() -> void:
 	if start_label != null:
 		start_label.text = "PRESS SPACE TO START"
 
-func _build_procedural_entry_ui() -> void:
+# === IN-GAME VIRTUAL KEYBOARD GRAPHICS ENGINE ===
+
+func _build_procedural_virtual_keyboard_ui() -> void:
 	entry_panel = PanelContainer.new()
 	entry_panel.visible = false
-	entry_panel.custom_minimum_size = Vector2(340, 120)
+	entry_panel.custom_minimum_size = Vector2(450, 280)
 	entry_panel.set_anchors_preset(Control.PRESET_CENTER)
 	entry_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	entry_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(entry_panel)
 
 	var margin_container = MarginContainer.new()
-	margin_container.add_theme_constant_override("margin_top", 12)
-	margin_container.add_theme_constant_override("margin_bottom", 12)
-	margin_container.add_theme_constant_override("margin_left", 16)
-	margin_container.add_theme_constant_override("margin_right", 16)
+	margin_container.add_theme_constant_override("margin_top", 16)
+	margin_container.add_theme_constant_override("margin_bottom", 16)
+	margin_container.add_theme_constant_override("margin_left", 20)
+	margin_container.add_theme_constant_override("margin_right", 20)
 	entry_panel.add_child(margin_container)
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.add_theme_constant_override("separation", 12)
 	margin_container.add_child(vbox)
 
 	title_label = Label.new()
-	title_label.text = "NEW HIGHSCORE!"
+	title_label.text = "WELCOME! SET YOUR DRIVER NAME:"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title_label)
 
-	name_input = LineEdit.new()
-	name_input.placeholder_text = "ENTER YOUR NAME..."
-	name_input.max_length = 8
-	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_input.text_submitted.connect(_on_name_submitted)
-	name_input.gui_input.connect(_on_name_input_clicked)
-	vbox.add_child(name_input)
-	
-	var hint := Label.new()
-	hint.text = "Press Enter to Save"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.modulate.a = 0.6
-	vbox.add_child(hint)
+	# Name Text Display Panel Room
+	display_name_label = Label.new()
+	display_name_label.text = "________"
+	display_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	display_name_label.add_theme_font_size_override("font_size", 24)
+	vbox.add_child(display_name_label)
 
-func _on_highscore_triggered(score_value: float) -> void:
-	pending_highscore_value = score_value
+	# Build Keyboard Character Selection Matrix (Grid)
+	var grid = GridContainer.new()
+	grid.columns = 7
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_child(grid)
+
+	# Generate character strings procedurally
+	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	for i in range(alphabet.length()):
+		var char_letter = alphabet[i]
+		var btn = Button.new()
+		btn.text = char_letter
+		btn.custom_minimum_size = Vector2(44, 44)
+		btn.pressed.connect(_on_keyboard_char_pressed.bind(char_letter))
+		grid.add_child(btn)
+
+	# Backspace Button
+	var btn_back = Button.new()
+	btn_back.text = "BACK"
+	btn_back.custom_minimum_size = Vector2(44, 44)
+	btn_back.pressed.connect(_on_keyboard_backspace_pressed)
+	grid.add_child(btn_back)
+
+	# Submit Confirmation Button
+	var btn_enter = Button.new()
+	btn_enter.text = "ENTER"
+	btn_enter.custom_minimum_size = Vector2(94, 44)
+	btn_enter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_enter.pressed.connect(_on_keyboard_submit_pressed)
+	
+	# Add spacing component step to balance asymmetric grid line length layout
+	grid.add_child(btn_enter)
+
+func _open_name_onboarding() -> void:
+	gm.can_start = false
 	entry_panel.visible = true
-	name_input.text = ""
-	name_input.grab_focus()
-	
-	# === DYNAMIC HEADER ALIGNMENT CHECK ===
-	var beat_local: bool = gm.qualifies_for_local(score_value)
-	var beat_online: bool = score_value > global_highest_score and global_highest_score > 0
-	
-	if beat_local and beat_online:
-		title_label.text = "🏆 ALL-TIME RECORD SHATTERED! 🏆"
-	elif beat_online:
-		title_label.text = "🌐 NEW WORLD RECORD! 🌐"
-	elif beat_local:
-		title_label.text = "🏅 NEW LOCAL HIGHSCORE! 🏅"
+	entered_string = ""
+	_update_keyboard_text_ui()
+	_toggle_touch_zones(false)
+
+func _on_keyboard_char_pressed(letter: String) -> void:
+	if entered_string.length() < 8:
+		entered_string += letter
+		_update_keyboard_text_ui()
+
+func _on_keyboard_backspace_pressed() -> void:
+	if entered_string.length() > 0:
+		entered_string = entered_string.substr(0, entered_string.length() - 1)
+		_update_keyboard_text_ui()
+
+func _update_keyboard_text_ui() -> void:
+	if entered_string.is_empty():
+		display_name_label.text = "________"
 	else:
-		title_label.text = "RUN COMPLETED!"
+		display_name_label.text = entered_string + "_".repeat(8 - entered_string.length())
 
-func _on_name_submitted(new_text: String) -> void:
+func _on_keyboard_submit_pressed() -> void:
+	var final_name = entered_string.strip_edges()
+	if final_name.is_empty():
+		final_name = "RUNNER"
+	
+	gm.save_player_name(final_name)
+	_complete_onboarding(final_name)
+
+func _complete_onboarding(_confirmed_name: String) -> void:
 	entry_panel.visible = false
-	await gm.add_leaderboard_entry(new_text, pending_highscore_value)
-	await get_tree().create_timer(1).timeout
+	_toggle_touch_zones(true)
+	gm.can_start = true
+	
+	# Run network refresh cycles updates asynchronously
 	await fetch_global_scores()
-	await get_tree().create_timer(1).timeout
+	await get_tree().create_timer(1.0).timeout
 	await fetch_global_scores()
 
-func _on_name_input_clicked(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.is_pressed():
-		name_input.release_focus()
-		name_input.grab_focus()
-		name_input.caret_column = name_input.text.length()
-		DisplayServer.virtual_keyboard_show(name_input.text, name_input.get_global_rect(), name_input.max_length)
+func _toggle_touch_zones(enable_touch: bool) -> void:
+	# Access touch inputs directly to block gameplay triggers while entering info
+	if mobile_controls_node != null:
+		mobile_controls_node.visible = enable_touch
+		if enable_touch:
+			mobile_controls_node.process_mode = PROCESS_MODE_INHERIT
+		else:
+			mobile_controls_node.process_mode = PROCESS_MODE_DISABLED
 
-# === ASYNC CLOUD DATABASE OPERATIONS ===
+# === CLOUD NETWORK LEADERBOARD CACHE PROCESSING ===
 
 func fetch_global_scores() -> void:
-	await SilentWolf.Scores.get_scores(3)
+	await SilentWolf.Scores.get_scores(3).sw_get_scores_complete
 	var remote_scores: Array = SilentWolf.Scores.scores
 	
 	if not remote_scores.is_empty():

@@ -66,10 +66,12 @@ func stop_running() -> void:
 	running = false
 	current_speed = base_speed
 
-	# Clean & clear rule: Must crack the 1000 point floor milestone to submit!
 	if current_score >= minimum_global_score_threshold:
 		can_start = false 
-		highscore_achieved.emit(current_score)
+		var final_score = current_score
+		highscore_achieved.emit(final_score)
+		
+		add_leaderboard_entry(player_name, final_score)
 	else:
 		current_score = 0.0
 
@@ -105,7 +107,7 @@ func add_leaderboard_entry(new_player_name: String, score_value: float) -> void:
 			leaderboard.resize(3)
 		_save_leaderboard()
 	
-	await _upload_global_score(int(score_value))
+	_upload_global_score(int(score_value))
 	
 	current_score = 0.0
 	can_start = true
