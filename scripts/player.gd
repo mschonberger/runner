@@ -352,6 +352,10 @@ func _reset_run() -> void:
 
 	if spawner != null:
 		spawner.reset_spawner()
+		
+	var parallax_mgr = get_tree().get_first_node_in_group("parallax_manager") as ParallaxBackgroundManager
+	if parallax_mgr != null:
+		parallax_mgr.reset_parallax_on_death()
 
 func _handle_dash(delta: float) -> void:
 	# Cooldown countdown (ONLY blocks air dash)
