@@ -1,7 +1,7 @@
 extends PlatformChunk
 
-@export var sink_speed: float = 120.0 
-@export var max_sink_depth: float = 200.0 
+@export var sink_speed: float = 75.0 
+@export var max_sink_depth: float = 110.0 
 
 @onready var step_trigger: Area2D = $StepTrigger
 

@@ -58,8 +58,19 @@ func _update_score_ui_display() -> void:
 		]
 	else:
 		var text_output = "Score: %d\n\n== LOCAL TOP 3 ==\n" % int(gm.current_score)
-		for i in range(gm.leaderboard.size()):
-			var entry = gm.leaderboard[i]
+		
+		var unique_local_entries: Array = []
+		var seen_local_names: Dictionary = {}
+		
+		for entry in gm.leaderboard:
+			var name_key: String = entry["name"].to_upper().strip_edges()
+			if not seen_local_names.has(name_key):
+				seen_local_names[name_key] = true
+				unique_local_entries.append(entry)
+
+		var display_limit = min(unique_local_entries.size(), 3)
+		for i in range(display_limit):
+			var entry = unique_local_entries[i]
 			text_output += "%d. %-8s : %d\n" % [i + 1, entry["name"], int(entry["score"])]
 		
 		text_output += "\n" + global_leaderboard_text
@@ -176,13 +187,11 @@ func _complete_onboarding(_confirmed_name: String) -> void:
 	_toggle_touch_zones(true)
 	gm.can_start = true
 	
-	# Run network refresh cycles updates asynchronously
 	await fetch_global_scores()
 	await get_tree().create_timer(1.0).timeout
 	await fetch_global_scores()
 
 func _toggle_touch_zones(enable_touch: bool) -> void:
-	# Access touch inputs directly to block gameplay triggers while entering info
 	if mobile_controls_node != null:
 		mobile_controls_node.visible = enable_touch
 		if enable_touch:
@@ -193,23 +202,35 @@ func _toggle_touch_zones(enable_touch: bool) -> void:
 # === CLOUD NETWORK LEADERBOARD CACHE PROCESSING ===
 
 func fetch_global_scores() -> void:
-	await SilentWolf.Scores.get_scores(3).sw_get_scores_complete
+	await SilentWolf.Scores.get_scores(10).sw_get_scores_complete
 	var remote_scores: Array = SilentWolf.Scores.scores
 	
 	if not remote_scores.is_empty():
-		var top_record_entry = remote_scores[0]
-		global_highest_score = int(top_record_entry.get("score", 0))
+		# Save the absolute highest score for the "Online Record" tracker
+		global_highest_score = int(remote_scores[0].get("score", 0))
 		
 		var leaderboard_lines: Array[String] = ["== GLOBAL TOP 3 =="]
+		var seen_global_names: Dictionary = {}
 		var rank = 1
+		
+		# --- Filter Global Duplicates ---
 		for entry in remote_scores:
-			var p_name: String = entry.get("player_name", "ANON")
+			if rank > 3:
+				break
+				
+			var p_name: String = entry.get("player_name", "ANON").to_upper().strip_edges()
 			var p_score: int = int(entry.get("score", 0))
 			
+			if seen_global_names.has(p_name):
+				continue
+				
+			seen_global_names[p_name] = true
 			leaderboard_lines.append("%d. %-8s : %d" % [rank, p_name, p_score])
 			rank += 1
+			
 		global_leaderboard_text = "\n".join(leaderboard_lines)
 	else:
 		global_highest_score = 0
 		global_leaderboard_text = "== GLOBAL TOP 3 =="
+		
 	_update_score_ui_display()
