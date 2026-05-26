@@ -12,7 +12,7 @@
 [ext_resource type="PackedScene" uid="uid://bdeggx5uihfy8" path="res://scenes/chunks/corridor_platform_chunk.tscn" id="6_ya4ey"]
 [ext_resource type="PackedScene" uid="uid://dqjsvsccc3n1f" path="res://scenes/chunks/shaking_platform_chunk.tscn" id="7_eb6dy"]
 [ext_resource type="PackedScene" uid="uid://csn7824xxdkpw" path="res://scenes/chunks/parkour_platform_chunk.tscn" id="8_trceg"]
-[ext_resource type="PackedScene" uid="uid://owm4p8clrbvf" path="res://scenes/zoom_platform_chunk.tscn" id="9_a8y0u"]
+[ext_resource type="PackedScene" uid="uid://owm4p8clrbvf" path="res://scenes/chunks/zoom_platform_chunk.tscn" id="9_a8y0u"]
 [ext_resource type="PackedScene" uid="uid://c70kn4k378y2f" path="res://scenes/mobile_controls.tscn" id="10_choun"]
 
 [node name="Main" type="Node2D"]
@@ -20,7 +20,35 @@
 [node name="LevelSpawner" type="Node2D" parent="."]
 script = ExtResource("1_tefeu")
 normal_platform_scenes = Array[PackedScene]([ExtResource("1_0wfyh")])
-special_platform_scenes = Array[PackedScene]([ExtResource("3_85g3d"), ExtResource("4_choun"), ExtResource("5_ya4ey"), ExtResource("6_ya4ey"), ExtResource("7_eb6dy"), ExtResource("8_trceg"), ExtResource("9_a8y0u")])
+special_platform_scenes = Array[Dictionary]([{
+"min_score": 3000,
+"scene": ExtResource("6_ya4ey"),
+"weight": 1
+}, {
+"min_score": 1500,
+"scene": ExtResource("3_85g3d"),
+"weight": 1
+}, {
+"min_score": 2000,
+"scene": ExtResource("4_choun"),
+"weight": 1
+}, {
+"min_score": 2500,
+"scene": ExtResource("8_trceg"),
+"weight": 1
+}, {
+"min_score": 500,
+"scene": ExtResource("7_eb6dy"),
+"weight": 2
+}, {
+"min_score": 500,
+"scene": ExtResource("5_ya4ey"),
+"weight": 2
+}, {
+"min_score": 1000,
+"scene": ExtResource("9_a8y0u"),
+"weight": 1
+}])
 
 [node name="Player" parent="." instance=ExtResource("2_sugp2")]
 position = Vector2(33, 269)

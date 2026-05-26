@@ -1,9 +1,8 @@
-# res://scripts/level_spawner.gd
 extends Node2D
 class_name LevelSpawner
 
 @export var normal_platform_scenes: Array[PackedScene] = []
-@export var special_platform_scenes: Array[PackedScene] = []
+@export var special_platform_scenes: Array[Dictionary] = []
 
 @export var spawn_buffer_x: float = 800.0   
 @export var destroy_buffer_x: float = -600.0 
@@ -24,7 +23,6 @@ func _physics_process(delta: float) -> void:
 	if not gm or not gm.running:
 		return
 
-	# Shift our trailing coordinate tracking point backwards with world speed
 	next_spawn_x -= gm.current_speed * delta
 
 	if next_spawn_x < spawn_buffer_x:
@@ -36,7 +34,6 @@ func spawn_next_chunk(gm: GameManager) -> void:
 	if normal_platform_scenes.is_empty():
 		return
 
-# 1. Determine which array pool to pull from based on current score (distance proxy)
 	var picked_scene: PackedScene
 	var current_score := gm.current_score
 	
@@ -45,7 +42,7 @@ func spawn_next_chunk(gm: GameManager) -> void:
 		special_chance = clampf(remap(current_score, 100.0, 1000.0, 0.0, 0.45), 0.0, 0.45)
 
 	if not special_platform_scenes.is_empty() and randf() < special_chance:
-		picked_scene = _pick_weighted_special_scene()
+		picked_scene = _pick_weighted_special_scene(current_score)
 	else:
 		picked_scene = normal_platform_scenes.pick_random()
 
@@ -53,11 +50,9 @@ func spawn_next_chunk(gm: GameManager) -> void:
 	if not chunk:
 		return
 
-	# 2. Establish chunk dimensions before calculating spatial position placement
 	if chunk.has_method("randomize_chunk_width"):
 		chunk.call("randomize_chunk_width")
 
-	# Calculate vertical offsets
 	var next_offset := clampf(
 		last_height_offset + randf_range(-max_step_offset, max_step_offset),
 		-max_total_offset,
@@ -71,7 +66,6 @@ func spawn_next_chunk(gm: GameManager) -> void:
 	chunk.position = Vector2(spawn_pos_x, spawn_pos_y)
 	add_child(chunk)
 
-	# 3. Fire initialization routines if present (Obstacles, custom setups, etc.)
 	if chunk.has_method("init_obstacle_chunk"):
 		chunk.call("init_obstacle_chunk")
 	elif chunk.has_method("init_chunk"):
@@ -79,12 +73,10 @@ func spawn_next_chunk(gm: GameManager) -> void:
 
 	active_chunks.append(chunk)
 	
-	# Close the frame by moving our trailing tracking marker to the right edge of this new chunk
 	next_spawn_x = chunk.position.x + (chunk.chunk_width / 2.0)
 	last_height_offset = next_offset
 
 func reset_spawner() -> void:
-	# Clean slate removal
 	for chunk in active_chunks:
 		if is_instance_valid(chunk):
 			chunk.queue_free()
@@ -93,7 +85,6 @@ func reset_spawner() -> void:
 	last_height_offset = 0.0
 	next_spawn_x = 0.0
 
-	# Spawn the guaranteed initial runway under the player's feet
 	if not normal_platform_scenes.is_empty():
 		var first_scene := normal_platform_scenes[0]
 		var chunk := first_scene.instantiate() as PlatformChunk
@@ -111,7 +102,6 @@ func reset_spawner() -> void:
 func _cleanup_old_chunks() -> void:
 	var dead_chunks: Array[PlatformChunk] = []
 	for chunk in active_chunks:
-		# If the rightmost edge of a chunk drops past our boundary limit, remove it
 		if chunk.position.x + (chunk.chunk_width / 2.0) < destroy_buffer_x:
 			dead_chunks.append(chunk)
 			chunk.queue_free()
@@ -119,29 +109,36 @@ func _cleanup_old_chunks() -> void:
 	for chunk in dead_chunks:
 		active_chunks.erase(chunk)
 
-func _pick_weighted_special_scene() -> PackedScene:
+func _pick_weighted_special_scene(current_score: float) -> PackedScene:
 	if special_platform_scenes.is_empty():
 		return null
-		
-	# Create a temporary array to build our probability weight map
-	var weighted_pool: Array[PackedScene] = []
+
+	var valid_elements: Array[Dictionary] = []
+	var total_weight: int = 0
 	
-	for scene in special_platform_scenes:
-		var chunk_instance = scene.instantiate()
-		
-		# Check the actual script class type attached to the packed scene
-		if chunk_instance.has_method("init_obstacle_chunk"):
-			# 🎯 OBSTACLE CHUNKS: Add them 4 times to the lottery pool
-			for w in range(4):
-				weighted_pool.append(scene)
-		else:
-			# 🎯 INVISIBLE / SINKING / OTHER CHUNKS: Add them only 2 times
-			for w in range(2):
-				weighted_pool.append(scene)
+	for element in special_platform_scenes:
+		if element.has("scene") and element.has("weight"):
+			var min_score: float = 0.0
+			if element.has("min_score"):
+				min_score = float(element["min_score"])
 				
-		chunk_instance.queue_free() # Clean up the memory instantly
-		
-	if weighted_pool.is_empty():
-		return special_platform_scenes.pick_random()
-		
-	return weighted_pool.pick_random()
+			if current_score >= min_score:
+				valid_elements.append(element)
+				total_weight += int(element["weight"])
+
+	if valid_elements.is_empty():
+		return normal_platform_scenes.pick_random()
+
+	if total_weight <= 0:
+		var fallback = valid_elements.pick_random()
+		return fallback.get("scene", null)
+
+	var roll := randi_range(1, total_weight)
+	var current_sum: int = 0
+	
+	for element in valid_elements:
+		current_sum += int(element["weight"])
+		if roll <= current_sum:
+			return element["scene"] as PackedScene
+
+	return null
