@@ -1,6 +1,8 @@
 extends Node
 class_name GameManager
 
+signal global_score_upload_completed
+
 @export var base_speed: float = 0.0
 @export var start_speed: float = 250.0
 @export var max_speed: float = 950.0
@@ -151,3 +153,4 @@ func _upload_global_score(score_to_send: int) -> void:
 	print("Uploading score to SilentWolf: ", player_name, " - ", score_to_send)
 	await SilentWolf.Scores.save_score(player_name, score_to_send).sw_save_score_complete
 	print("Global score upload request processed.")
+	global_score_upload_completed.emit()

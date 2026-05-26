@@ -21,11 +21,8 @@ IGNORE_DIRS = {".git", ".godot", ".import", "builds", "docs", "assets"}
 # Skip these specific sub-folders (relative to project root).
 # formatting: use forward slashes matching your structure.
 IGNORE_PATHS = [
-    #"scenes/minigames",   # <--- Removes this specific folder
-    "art/trainer",        # <--- Example: Remove trainer art folder
-    "scenes/fx",
-    "scenes/maps",
-    "scenes/shader",
+    "addons",   # <--- Removes this specific folder
+    "art",
     
 ]
 

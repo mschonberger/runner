@@ -22,11 +22,13 @@ var entered_string: String = ""
 func _ready() -> void:
 	gm = get_tree().get_first_node_in_group("game_manager") as GameManager
 	mobile_controls_node = get_parent().get_node_or_null("MobileControls")
-	
+
+	if gm:
+		gm.global_score_upload_completed.connect(_on_global_score_upload_completed)
+
 	_build_procedural_virtual_keyboard_ui()
 	_setup_initial_ui_text()
-	
-	# Check if name selection onboarding is required at start
+
 	if gm.player_name == "Guest" or gm.player_name.strip_edges().is_empty():
 		_open_name_onboarding()
 	else:
@@ -105,7 +107,7 @@ func _build_procedural_virtual_keyboard_ui() -> void:
 	margin_container.add_child(vbox)
 
 	title_label = Label.new()
-	title_label.text = "WELCOME! SET YOUR DRIVER NAME:"
+	title_label.text = "WELCOME! SET YOUR RUNNER NAME:"
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title_label)
 
@@ -136,14 +138,14 @@ func _build_procedural_virtual_keyboard_ui() -> void:
 
 	# Backspace Button
 	var btn_back = Button.new()
-	btn_back.text = "BACK"
+	btn_back.text = "DEL"
 	btn_back.custom_minimum_size = Vector2(44, 44)
 	btn_back.pressed.connect(_on_keyboard_backspace_pressed)
 	grid.add_child(btn_back)
 
 	# Submit Confirmation Button
 	var btn_enter = Button.new()
-	btn_enter.text = "ENTER"
+	btn_enter.text = "OK"
 	btn_enter.custom_minimum_size = Vector2(94, 44)
 	btn_enter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn_enter.pressed.connect(_on_keyboard_submit_pressed)
@@ -234,3 +236,7 @@ func fetch_global_scores() -> void:
 		global_leaderboard_text = "== GLOBAL TOP 3 =="
 		
 	_update_score_ui_display()
+
+func _on_global_score_upload_completed() -> void:
+	print("UI: Refreshing leaderboard after successful upload...")
+	fetch_global_scores()
