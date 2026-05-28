@@ -1,12 +1,6 @@
-[gd_scene load_steps=8 format=3 uid="uid://dbxdm2kl70rn5"]
+[gd_scene load_steps=2 format=3 uid="uid://dbxdm2kl70rn5"]
 
 [ext_resource type="Script" uid="uid://3jitca2o7cou" path="res://scripts/parallax_background_manager.gd" id="1_bp0en"]
-[ext_resource type="Texture2D" uid="uid://bpjn453hj7ahv" path="res://art/background/City A/A1.png" id="2_r411f"]
-[ext_resource type="Texture2D" uid="uid://cgxvc1e03smms" path="res://art/background/City A/A2.png" id="3_aqkwp"]
-[ext_resource type="Texture2D" uid="uid://dpee0s60t4ll2" path="res://art/background/City A/A3.png" id="4_pwfa4"]
-[ext_resource type="Texture2D" uid="uid://ckvve4jlvy7v4" path="res://art/background/City A/A4.png" id="5_10alb"]
-[ext_resource type="Texture2D" uid="uid://brtht8a2h05kq" path="res://art/background/City A/A5.png" id="6_0enht"]
-[ext_resource type="Texture2D" uid="uid://cwqdf3q6yypur" path="res://art/background/City A/A6.png" id="7_854b8"]
 
 [node name="ParallaxBackgroundManager" type="Node2D"]
 script = ExtResource("1_bp0en")
@@ -20,7 +14,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer0"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("2_r411f")
 centered = false
 
 [node name="Layer1" type="Parallax2D" parent="PackA"]
@@ -30,7 +23,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer1"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("3_aqkwp")
 centered = false
 
 [node name="Layer2" type="Parallax2D" parent="PackA"]
@@ -40,7 +32,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer2"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("4_pwfa4")
 centered = false
 
 [node name="Layer3" type="Parallax2D" parent="PackA"]
@@ -50,7 +41,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer3"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("5_10alb")
 centered = false
 
 [node name="Layer4" type="Parallax2D" parent="PackA"]
@@ -60,7 +50,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer4"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("6_0enht")
 centered = false
 
 [node name="Layer5" type="Parallax2D" parent="PackA"]
@@ -70,7 +59,6 @@ repeat_times = 3
 
 [node name="Sprite2D" type="Sprite2D" parent="PackA/Layer5"]
 scale = Vector2(1.111, 1.111)
-texture = ExtResource("7_854b8")
 centered = false
 
 [node name="PackB" type="Node2D" parent="."]

@@ -11,17 +11,56 @@ class_name ParallaxBackgroundManager
 		"res://art/background/City A/A2.png",
 		"res://art/background/City A/A3.png",
 		"res://art/background/City A/A4.png",
-		"res://art/background/City A/A5.png",
-		"res://art/background/City A/A6.png"
-		
+		"res://art/background/City A/A5.png"
 	],
 	[ # PACK 2 (2500 to 5000 Points)
 		"res://art/background/City B/B1.png",
 		"res://art/background/City B/B2.png",
 		"res://art/background/City B/B3.png",
 		"res://art/background/City B/B4.png",
-		"res://art/background/City B/B5.png",
-		"res://art/background/City B/B6.png"
+		"res://art/background/City B/B5.png"
+	],
+	[ # PACK 3 (5000 to 7500 Points)
+		"res://art/background/City C/C1.png",
+		"res://art/background/City C/C2.png",
+		"res://art/background/City C/C3.png",
+		"res://art/background/City C/C4.png",
+		"res://art/background/City C/C5.png"
+	],
+	[ # PACK 4 (7500 to 10000 Points)
+		"res://art/background/City D/D1.png",
+		"res://art/background/City D/D2.png",
+		"res://art/background/City D/D3.png",
+		"res://art/background/City D/D4.png",
+		"res://art/background/City D/D5.png"
+	],
+	[ # PACK 5 (10000 to 12500 Points)
+		"res://art/background/City E/E1.png",
+		"res://art/background/City E/E2.png",
+		"res://art/background/City E/E3.png",
+		"res://art/background/City E/E4.png",
+		"res://art/background/City E/E5.png"
+	],
+	[ # PACK 6 (12500 to 15000 Points)
+		"res://art/background/City F/F1.png",
+		"res://art/background/City F/F2.png",
+		"res://art/background/City F/F3.png",
+		"res://art/background/City F/F4.png",
+		"res://art/background/City F/F5.png"
+	],
+	[ # PACK 7 (15000 to 17500 Points)
+		"res://art/background/City G/G1.png",
+		"res://art/background/City G/G2.png",
+		"res://art/background/City G/G3.png",
+		"res://art/background/City G/G4.png",
+		"res://art/background/City G/G5.png"
+	],
+	[ # PACK 8 (17500 to 20000 Points)
+		"res://art/background/City H/H1.png",
+		"res://art/background/City H/H2.png",
+		"res://art/background/City H/H3.png",
+		"res://art/background/City H/H4.png",
+		"res://art/background/City H/H5.png"
 	]
 ]
 
