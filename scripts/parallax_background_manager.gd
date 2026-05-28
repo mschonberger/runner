@@ -100,15 +100,20 @@ func _set_layer_autoscroll(adjusted_speed: float) -> void:
 			layer.autoscroll.x = -adjusted_speed * layer.scroll_scale.x
 
 func _reset_visibility() -> void:
-	current_pack_index = 0
-	active_is_pack_a = true
 	is_fading = false
 	next_fade_score = score_milestone
+	active_is_pack_a = true
+	
+	if not all_packs_textures.is_empty():
+		current_pack_index = randi() % all_packs_textures.size()
+	else:
+		current_pack_index = 0
 	
 	_load_pack_textures_into_node(pack_a, current_pack_index)
 	
 	pack_a.modulate = background_tint
 	pack_b.modulate = background_tint
+	
 	pack_a.modulate.a = 1.0
 	pack_b.modulate.a = 0.0
 
