@@ -65,19 +65,18 @@ var _can_be_hit: bool = true
 
 var gm: GameManager
 var spawner: LevelSpawner
-var fader: ScreenFader
 
 var _shake_left: float = 0.0
 var _cam_base_pos: Vector2 = Vector2.ZERO
 var _is_shaking_continuously: bool = false
 
 var _start_pos: Vector2 = Vector2.ZERO
+var is_visually_flipped: bool = false
 
 
 func _ready() -> void:
 	gm = get_parent().get_node("GameManager") as GameManager
 	spawner = get_parent().get_node("LevelSpawner") as LevelSpawner
-	fader = get_tree().get_first_node_in_group("screen_fader") as ScreenFader
 
 	state = PlayerState.IDLE
 	started = false
@@ -318,15 +317,10 @@ func _check_fall_reset() -> void:
 	_die_and_reset()
 
 func _die_and_reset() -> void:
-	if fader != null and fader.is_busy():
-		return
 
 	if gm != null:
 		gm.stop_running()
 
-	if fader != null:
-		fader.fade_reset_and_fade_in(Callable(self, "_reset_run"))
-	else:
 		_reset_run()
 
 func _reset_run() -> void:
@@ -344,6 +338,11 @@ func _reset_run() -> void:
 	_dash_cooldown_left = 0.0
 	_air_dash_used_this_air = false
 	_start_cooldown_on_next_landing = false
+
+	is_visually_flipped = false
+	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
+	if shader_rect and shader_rect.material:
+		(shader_rect.material as ShaderMaterial).set_shader_parameter("flip_y", false)
 
 	if standard_shape != null:
 		standard_shape.set_deferred("disabled", false)
@@ -502,3 +501,12 @@ func set_continuous_shake(is_shaking: bool) -> void:
 	_is_shaking_continuously = is_shaking
 	if is_shaking and cam != null:
 		_cam_base_pos = cam.position
+
+func flip_gravity() -> void:
+	is_visually_flipped = !is_visually_flipped
+	
+	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
+	if shader_rect and shader_rect.material:
+		var mat = shader_rect.material as ShaderMaterial
+		
+		mat.set_shader_parameter("flip_y", is_visually_flipped)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://dx7tgfrq7ce3b"]
+[gd_scene load_steps=18 format=3 uid="uid://dx7tgfrq7ce3b"]
 
 [ext_resource type="PackedScene" uid="uid://chdnluwit5sdn" path="res://scenes/ground_segment.tscn" id="1_0wfyh"]
 [ext_resource type="PackedScene" uid="uid://dbxdm2kl70rn5" path="res://scenes/parallax_background_manager.tscn" id="1_jkv2x"]
@@ -7,7 +7,6 @@
 [ext_resource type="PackedScene" uid="uid://btr108jabjby5" path="res://scenes/chunks/invisible_platform_chunk.tscn" id="3_85g3d"]
 [ext_resource type="Script" uid="uid://e2exl07hqtk3" path="res://scripts/game_manager.gd" id="3_sugp2"]
 [ext_resource type="PackedScene" uid="uid://ckw1143whcd0c" path="res://scenes/chunks/obstacle_platform_chunk.tscn" id="4_choun"]
-[ext_resource type="Script" uid="uid://dbxytx3yeqiga" path="res://scripts/screen_fader.gd" id="5_tbgi4"]
 [ext_resource type="PackedScene" uid="uid://blorfy0uhw71g" path="res://scenes/chunks/sinking_platform_chunk.tscn" id="5_ya4ey"]
 [ext_resource type="Script" uid="uid://tqixb60vhnib" path="res://scripts/ui.gd" id="6_tefeu"]
 [ext_resource type="PackedScene" uid="uid://bdeggx5uihfy8" path="res://scenes/chunks/corridor_platform_chunk.tscn" id="6_ya4ey"]
@@ -15,6 +14,12 @@
 [ext_resource type="PackedScene" uid="uid://csn7824xxdkpw" path="res://scenes/chunks/parkour_platform_chunk.tscn" id="8_trceg"]
 [ext_resource type="PackedScene" uid="uid://owm4p8clrbvf" path="res://scenes/chunks/zoom_platform_chunk.tscn" id="9_a8y0u"]
 [ext_resource type="PackedScene" uid="uid://c70kn4k378y2f" path="res://scenes/mobile_controls.tscn" id="10_choun"]
+[ext_resource type="PackedScene" uid="uid://djcbbdtxs7hoe" path="res://scenes/chunks/gravity_inversion_platform_chunk.tscn" id="11_jbj1t"]
+[ext_resource type="Shader" uid="uid://b010kcy8ra34t" path="res://shader/screen_mirror.gdshader" id="17_muem4"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_dp3eg"]
+shader = ExtResource("17_muem4")
+shader_parameter/flip_y = false
 
 [node name="Main" type="Node2D"]
 
@@ -51,6 +56,10 @@ special_platform_scenes = Array[Dictionary]([{
 "min_score": 1000,
 "scene": ExtResource("9_a8y0u"),
 "weight": 1
+}, {
+"min_score": 100,
+"scene": ExtResource("11_jbj1t"),
+"weight": 9
 }])
 
 [node name="Player" parent="." instance=ExtResource("2_sugp2")]
@@ -64,18 +73,8 @@ offset = Vector2(200, 0)
 [node name="GameManager" type="Node" parent="." groups=["game_manager"]]
 script = ExtResource("3_sugp2")
 
-[node name="ScreenFader" type="CanvasLayer" parent="."]
-visible = false
-script = ExtResource("5_tbgi4")
-
-[node name="Flash" type="ColorRect" parent="ScreenFader"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
 [node name="UI" type="CanvasLayer" parent="."]
+layer = 2
 script = ExtResource("6_tefeu")
 
 [node name="ScoreLabel" type="Label" parent="UI"]
@@ -119,3 +118,13 @@ grow_vertical = 2
 text = "Controls"
 
 [node name="MobileControls" parent="." instance=ExtResource("10_choun")]
+
+[node name="MirrorLayer" type="CanvasLayer" parent="."]
+
+[node name="ShaderRect" type="ColorRect" parent="MirrorLayer"]
+material = SubResource("ShaderMaterial_dp3eg")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

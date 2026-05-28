@@ -1,0 +1,26 @@
+[gd_scene load_steps=5 format=3 uid="uid://djcbbdtxs7hoe"]
+
+[ext_resource type="Script" uid="uid://c4o8jii3mu3eq" path="res://scripts/gravity_inversion_platform_chunk.gd" id="1_0fj8t"]
+[ext_resource type="Texture2D" uid="uid://drsrtx4yho6r4" path="res://art/floor/GroundC3.png" id="1_iwk2y"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_0fj8t"]
+size = Vector2(528, 64)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_a1rk8"]
+size = Vector2(20, 256)
+
+[node name="GravityInversionPlatformChunk" type="StaticBody2D"]
+script = ExtResource("1_0fj8t")
+chunk_width = 528.0
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("1_iwk2y")
+
+[node name="SolidFloor" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_0fj8t")
+
+[node name="CenterTrigger" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CenterTrigger"]
+position = Vector2(0, -128)
+shape = SubResource("RectangleShape2D_a1rk8")
