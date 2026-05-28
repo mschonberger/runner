@@ -14,6 +14,7 @@ var active_chunks: Array[PlatformChunk] = []
 var next_spawn_x: float = 0.0
 var last_height_offset: float = 0.0
 var track_base_y: float = 328.0 
+var last_spawned_was_special: bool = false
 
 func _ready() -> void:
 	reset_spawner()
@@ -36,15 +37,20 @@ func spawn_next_chunk(gm: GameManager) -> void:
 
 	var picked_scene: PackedScene
 	var current_score := gm.current_score
+	var chosen_as_special := false
 	
 	var special_chance := 0.0
 	if current_score > 100.0:
 		special_chance = clampf(remap(current_score, 100.0, 1000.0, 0.0, 0.45), 0.0, 0.45)
 
-	if not special_platform_scenes.is_empty() and randf() < special_chance:
+	if not special_platform_scenes.is_empty() and not last_spawned_was_special and randf() < special_chance:
 		picked_scene = _pick_weighted_special_scene(current_score)
+		chosen_as_special = true
 	else:
 		picked_scene = normal_platform_scenes.pick_random()
+		chosen_as_special = false
+
+	last_spawned_was_special = chosen_as_special
 
 	var chunk := picked_scene.instantiate() as PlatformChunk
 	if not chunk:
@@ -84,6 +90,7 @@ func reset_spawner() -> void:
 
 	last_height_offset = 0.0
 	next_spawn_x = 0.0
+	last_spawned_was_special = false
 
 	if not normal_platform_scenes.is_empty():
 		var first_scene := normal_platform_scenes[0]

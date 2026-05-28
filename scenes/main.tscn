@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://dx7tgfrq7ce3b"]
+[gd_scene load_steps=19 format=3 uid="uid://dx7tgfrq7ce3b"]
 
 [ext_resource type="PackedScene" uid="uid://chdnluwit5sdn" path="res://scenes/ground_segment.tscn" id="1_0wfyh"]
 [ext_resource type="PackedScene" uid="uid://dbxdm2kl70rn5" path="res://scenes/parallax_background_manager.tscn" id="1_jkv2x"]
@@ -15,11 +15,13 @@
 [ext_resource type="PackedScene" uid="uid://owm4p8clrbvf" path="res://scenes/chunks/zoom_platform_chunk.tscn" id="9_a8y0u"]
 [ext_resource type="PackedScene" uid="uid://c70kn4k378y2f" path="res://scenes/mobile_controls.tscn" id="10_choun"]
 [ext_resource type="PackedScene" uid="uid://djcbbdtxs7hoe" path="res://scenes/chunks/gravity_inversion_platform_chunk.tscn" id="11_jbj1t"]
+[ext_resource type="PackedScene" uid="uid://cwwcxobrqiqtr" path="res://scenes/chunks/color_inversion_platform_chunk.tscn" id="12_muem4"]
 [ext_resource type="Shader" uid="uid://b010kcy8ra34t" path="res://shader/screen_mirror.gdshader" id="17_muem4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dp3eg"]
 shader = ExtResource("17_muem4")
 shader_parameter/flip_y = false
+shader_parameter/invert_colors = false
 
 [node name="Main" type="Node2D"]
 
@@ -29,8 +31,12 @@ shader_parameter/flip_y = false
 script = ExtResource("1_tefeu")
 normal_platform_scenes = Array[PackedScene]([ExtResource("1_0wfyh")])
 special_platform_scenes = Array[Dictionary]([{
-"min_score": 3000,
-"scene": ExtResource("6_ya4ey"),
+"min_score": 100,
+"scene": ExtResource("7_eb6dy"),
+"weight": 1
+}, {
+"min_score": 500,
+"scene": ExtResource("5_ya4ey"),
 "weight": 1
 }, {
 "min_score": 1500,
@@ -38,28 +44,28 @@ special_platform_scenes = Array[Dictionary]([{
 "weight": 1
 }, {
 "min_score": 2000,
-"scene": ExtResource("4_choun"),
-"weight": 1
-}, {
-"min_score": 2500,
-"scene": ExtResource("8_trceg"),
-"weight": 1
-}, {
-"min_score": 500,
-"scene": ExtResource("7_eb6dy"),
-"weight": 2
-}, {
-"min_score": 500,
-"scene": ExtResource("5_ya4ey"),
-"weight": 2
-}, {
-"min_score": 1000,
 "scene": ExtResource("9_a8y0u"),
 "weight": 1
 }, {
-"min_score": 100,
+"min_score": 3000,
+"scene": ExtResource("4_choun"),
+"weight": 2
+}, {
+"min_score": 4000,
+"scene": ExtResource("8_trceg"),
+"weight": 1
+}, {
+"min_score": 5000,
+"scene": ExtResource("12_muem4"),
+"weight": 1
+}, {
+"min_score": 6000,
 "scene": ExtResource("11_jbj1t"),
-"weight": 9
+"weight": 1
+}, {
+"min_score": 7000,
+"scene": ExtResource("6_ya4ey"),
+"weight": 1
 }])
 
 [node name="Player" parent="." instance=ExtResource("2_sugp2")]

@@ -14,6 +14,3 @@ texture = ExtResource("3_1yva4")
 
 [node name="SolidLeft" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_l4x32")
-
-[node name="SolidRight" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_l4x32")

@@ -72,6 +72,7 @@ var _is_shaking_continuously: bool = false
 
 var _start_pos: Vector2 = Vector2.ZERO
 var is_visually_flipped: bool = false
+var is_color_inverted: bool = false
 
 
 func _ready() -> void:
@@ -340,9 +341,13 @@ func _reset_run() -> void:
 	_start_cooldown_on_next_landing = false
 
 	is_visually_flipped = false
+	is_color_inverted = false
+
 	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
 	if shader_rect and shader_rect.material:
-		(shader_rect.material as ShaderMaterial).set_shader_parameter("flip_y", false)
+		var mat = shader_rect.material as ShaderMaterial
+		mat.set_shader_parameter("flip_y", false)
+		mat.set_shader_parameter("invert_colors", false)
 
 	if standard_shape != null:
 		standard_shape.set_deferred("disabled", false)
@@ -357,7 +362,6 @@ func _reset_run() -> void:
 		parallax_mgr.reset_parallax_on_death()
 
 func _handle_dash(delta: float) -> void:
-	# Cooldown countdown (ONLY blocks air dash)
 	if _dash_cooldown_left > 0.0:
 		_dash_cooldown_left -= delta
 
@@ -510,3 +514,21 @@ func flip_gravity() -> void:
 		var mat = shader_rect.material as ShaderMaterial
 		
 		mat.set_shader_parameter("flip_y", is_visually_flipped)
+
+func toggle_color_inversion() -> void:
+	is_color_inverted = !is_color_inverted
+	
+	var main_node = get_tree().root.get_node_or_null("Main")
+	var shader_rect: ColorRect = null
+	
+	if main_node:
+		shader_rect = main_node.get_node_or_null("MirrorLayer/ShaderRect") as ColorRect
+	else:
+		shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
+
+	if shader_rect and shader_rect.material:
+		var mat = shader_rect.material as ShaderMaterial
+		mat.set_shader_parameter("invert_colors", is_color_inverted)
+		print("Shader parameter 'invert_colors' successfully set to: ", is_color_inverted)
+	else:
+		push_error("Player: Cannot find ShaderRect or its material!")

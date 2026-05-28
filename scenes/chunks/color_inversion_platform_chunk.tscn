@@ -1,8 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://djcbbdtxs7hoe"]
+[gd_scene load_steps=6 format=3 uid="uid://cwwcxobrqiqtr"]
 
-[ext_resource type="Script" uid="uid://c4o8jii3mu3eq" path="res://scripts/gravity_inversion_platform_chunk.gd" id="1_0fj8t"]
-[ext_resource type="Texture2D" uid="uid://bcygarw1q6cd1" path="res://art/houses/528 House A.png" id="2_a1rk8"]
-[ext_resource type="Texture2D" uid="uid://cfs4f68ifw7nw" path="res://art/floor/GroundC4.png" id="3_vmfv8"]
+[ext_resource type="Script" uid="uid://bhogeui0gjh1u" path="res://scripts/color_inversion_platform_chunk.gd" id="1_8i55u"]
+[ext_resource type="Texture2D" uid="uid://bcygarw1q6cd1" path="res://art/houses/528 House A.png" id="2_8i55u"]
+[ext_resource type="Texture2D" uid="uid://drsrtx4yho6r4" path="res://art/floor/GroundC3.png" id="2_wyuhk"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0fj8t"]
 size = Vector2(528, 924)
@@ -11,15 +11,15 @@ size = Vector2(528, 924)
 size = Vector2(20, 256)
 
 [node name="GravityInversionPlatformChunk" type="StaticBody2D"]
-script = ExtResource("1_0fj8t")
+script = ExtResource("1_8i55u")
 chunk_width = 528.0
 
 [node name="House" type="Sprite2D" parent="."]
 position = Vector2(0, 430)
-texture = ExtResource("2_a1rk8")
+texture = ExtResource("2_8i55u")
 
 [node name="Floor" type="Sprite2D" parent="."]
-texture = ExtResource("3_vmfv8")
+texture = ExtResource("2_wyuhk")
 
 [node name="SolidFloor" type="CollisionShape2D" parent="."]
 position = Vector2(0, 430)
