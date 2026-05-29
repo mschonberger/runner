@@ -1,16 +1,17 @@
-[gd_scene load_steps=4 format=3 uid="uid://owm4p8clrbvf"]
+[gd_scene load_steps=3 format=3 uid="uid://owm4p8clrbvf"]
 
 [ext_resource type="Script" uid="uid://bsy4vrsx0msrc" path="res://scripts/zoom_platform_chunk.gd" id="1_eyosn"]
-[ext_resource type="Texture2D" uid="uid://cc5sxb1td5hm2" path="res://art/floor/GroundE2.png" id="2_eyosn"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_uqhbq"]
-size = Vector2(1584, 64)
+size = Vector2(1584, 950)
 
 [node name="ZoomPlatformChunk" type="StaticBody2D"]
 script = ExtResource("1_eyosn")
+chunk_width = 1584.0
+main_color = Color(0.6, 0, 1, 1)
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_eyosn")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 475)
 shape = SubResource("RectangleShape2D_uqhbq")

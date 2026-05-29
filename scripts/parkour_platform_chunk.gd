@@ -4,6 +4,7 @@ extends PlatformChunk
 @export var obstacle_count: int = 4
 
 func _ready() -> void:
+	super._ready()
 	chunk_width = 2112.0
 	
 	if moving_deadly_obstacle_scene == null:

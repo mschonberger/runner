@@ -18,7 +18,7 @@
     .github/
         workflows/
             deploy.yml
-    resources/
+    globals/
     scenes/
         deadly_obstacle.tscn
         ground_segment.tscn
@@ -26,9 +26,12 @@
         mobile_controls.tscn
         moving_deadly_obstacle.tscn
         obstacle.tscn
+        parallax_background_manager.tscn
         player.tscn
         chunks/
+            color_inversion_platform_chunk.tscn
             corridor_platform_chunk.tscn
+            gravity_inversion_platform_chunk.tscn
             invisible_platform_chunk.tscn
             obstacle_platform_chunk.tscn
             parkour_platform_chunk.tscn
@@ -36,25 +39,54 @@
             sinking_platform_chunk.tscn
             zoom_platform_chunk.tscn
     scripts/
+        color_inversion_platform_chunk.gd
         corridor_platform_chunk.gd
         deadly_obstacle.gd
         game_manager.gd
+        gravity_inversion_platform_chunk.gd
         ground_segment.gd
         invisible_platform_chunk.gd
         level_spawner.gd
         moving_deadly_obstacle.gd
         obstacle.gd
         obstacle_platform_chunk.gd
+        parallax_background_manager.gd
         parkour_platform_chunk.gd
         platform_chunk.gd
         player.gd
-        screen_fader.gd
         shaking_platform_chunk.gd
         sinking_platform_chunk.gd
         ui.gd
         zoom_platform_chunk.gd
+    shader/
+        screen_mirror.gdshader
 
 ==== CODE FILES ====
+
+
+---- FILE: .\scripts\color_inversion_platform_chunk.gd ----
+extends PlatformChunk
+
+@onready var trigger_area: Area2D = $CenterTrigger
+
+var _has_executed: bool = false
+
+func _ready() -> void:
+	chunk_width = 528.0
+	_has_executed = false
+	
+	if trigger_area:
+		if trigger_area.body_entered.is_connected(_on_player_passed_center):
+			trigger_area.body_entered.disconnect(_on_player_passed_center)
+		trigger_area.body_entered.connect(_on_player_passed_center)
+
+func _on_player_passed_center(body: Node) -> void:
+	if _has_executed:
+		return
+		
+	if body.is_in_group("player") and body.has_method("toggle_color_inversion"):
+		_has_executed = true
+		body.toggle_color_inversion()
 
 
 ---- FILE: .\scripts\corridor_platform_chunk.gd ----
@@ -338,32 +370,43 @@ func _upload_global_score(score_to_send: int) -> void:
 	global_score_upload_completed.emit()
 
 
+---- FILE: .\scripts\gravity_inversion_platform_chunk.gd ----
+extends PlatformChunk
+
+@onready var trigger_area: Area2D = $CenterTrigger
+
+var _triggered: bool = false
+
+func _ready() -> void:
+	chunk_width = 528.0
+	if trigger_area:
+		trigger_area.body_entered.connect(_on_player_passed_center)
+
+func _on_player_passed_center(body: Node) -> void:
+	if _triggered:
+		return
+		
+	if body.is_in_group("player") and body.has_method("flip_gravity"):
+		_triggered = true
+		body.flip_gravity()
+
+
 ---- FILE: .\scripts\ground_segment.gd ----
-# res://scripts/ground_segment.gd
 extends PlatformChunk
 class_name GroundSegment
 
 @export var segment_height: float = 64.0
 
 @onready var col_left: CollisionShape2D = $SolidLeft
-@onready var col_right: CollisionShape2D = $SolidRight
 @onready var left_sprite: Sprite2D = $Sprite2D
 
 var _tex_size: Vector2 = Vector2.ONE
 var _left_shape: RectangleShape2D
 
 func _ready() -> void:
-	# Keep clean rectangle shape setup
 	_left_shape = RectangleShape2D.new()
 	col_left.shape = _left_shape
 	
-	# Permanently turn off the old Right collision shape—it is no longer used!
-	col_right.disabled = true
-	var right_node = get_node_or_null("RightSprite")
-	if right_node:
-		right_node.queue_free()
-
-	# Cache texture sizes for clean visual stretching
 	if left_sprite and left_sprite.texture:
 		_tex_size = left_sprite.texture.get_size()
 		if _tex_size.y > 0.0:
@@ -371,36 +414,27 @@ func _ready() -> void:
 
 	_apply_solid_layout()
 
-# --- Public Entry Points Called By Spawner ---
-
 func randomize_chunk_width() -> void:
-	# 🎯 Strictly limits the random size between 528px and 1056px
 	chunk_width = randf_range(264.0, 792.0)
 
 func configure_with_difficulty(_speed: float, _max_speed: float) -> void:
-	# Difficulty-scaled slicing is gone! 
-	# We just ensure the solid layout mirrors our newly chosen width.
 	_apply_solid_layout()
-
-# --- Internal Layout Engine ---
 
 func _apply_solid_layout() -> void:
 	if _left_shape == null: 
 		return
 		
-	# Match the collision box exactly to the overall platform size
 	col_left.disabled = false
 	_left_shape.size = Vector2(chunk_width, segment_height)
 	col_left.position = Vector2.ZERO
 
-	# Stretch the sprite across the entire width perfectly centered
 	if left_sprite and _tex_size.x > 0.0:
 		left_sprite.visible = true
 		left_sprite.position = Vector2.ZERO
 		left_sprite.scale.x = chunk_width / _tex_size.x
 
-# --- Purged Legacy Fallbacks ---
-func configure_no_gap() -> void: _apply_solid_layout()
+func configure_no_gap() -> void: 
+	_apply_solid_layout()
 
 
 ---- FILE: .\scripts\invisible_platform_chunk.gd ----
@@ -466,6 +500,7 @@ var active_chunks: Array[PlatformChunk] = []
 var next_spawn_x: float = 0.0
 var last_height_offset: float = 0.0
 var track_base_y: float = 328.0 
+var last_spawned_was_special: bool = false
 
 func _ready() -> void:
 	reset_spawner()
@@ -488,15 +523,20 @@ func spawn_next_chunk(gm: GameManager) -> void:
 
 	var picked_scene: PackedScene
 	var current_score := gm.current_score
+	var chosen_as_special := false
 	
 	var special_chance := 0.0
 	if current_score > 100.0:
 		special_chance = clampf(remap(current_score, 100.0, 1000.0, 0.0, 0.45), 0.0, 0.45)
 
-	if not special_platform_scenes.is_empty() and randf() < special_chance:
+	if not special_platform_scenes.is_empty() and not last_spawned_was_special and randf() < special_chance:
 		picked_scene = _pick_weighted_special_scene(current_score)
+		chosen_as_special = true
 	else:
 		picked_scene = normal_platform_scenes.pick_random()
+		chosen_as_special = false
+
+	last_spawned_was_special = chosen_as_special
 
 	var chunk := picked_scene.instantiate() as PlatformChunk
 	if not chunk:
@@ -536,6 +576,7 @@ func reset_spawner() -> void:
 
 	last_height_offset = 0.0
 	next_spawn_x = 0.0
+	last_spawned_was_special = false
 
 	if not normal_platform_scenes.is_empty():
 		var first_scene := normal_platform_scenes[0]
@@ -729,6 +770,170 @@ func _generate_massive_gauntlet() -> void:
 		add_child(obstacle)
 
 
+---- FILE: .\scripts\parallax_background_manager.gd ----
+extends Node2D
+class_name ParallaxBackgroundManager
+
+@export var score_milestone: float = 2500.0
+@export var fade_duration: float = 2.0
+@export var background_tint: Color = Color(0.65, 0.65, 0.65, 1.0)
+@export var background_speed_modifier: float = 0.2
+@export var all_packs_textures: Array[Array] = [
+	[ # PACK 1 (0 to 2500 Points)
+		"res://art/background/City A/A1.png",
+		"res://art/background/City A/A2.png",
+		"res://art/background/City A/A3.png",
+		"res://art/background/City A/A4.png",
+		"res://art/background/City A/A5.png"
+	],
+	[ # PACK 2 (2500 to 5000 Points)
+		"res://art/background/City B/B1.png",
+		"res://art/background/City B/B2.png",
+		"res://art/background/City B/B3.png",
+		"res://art/background/City B/B4.png",
+		"res://art/background/City B/B5.png"
+	],
+	[ # PACK 3 (5000 to 7500 Points)
+		"res://art/background/City C/C1.png",
+		"res://art/background/City C/C2.png",
+		"res://art/background/City C/C3.png",
+		"res://art/background/City C/C4.png",
+		"res://art/background/City C/C5.png"
+	],
+	[ # PACK 4 (7500 to 10000 Points)
+		"res://art/background/City D/D1.png",
+		"res://art/background/City D/D2.png",
+		"res://art/background/City D/D3.png",
+		"res://art/background/City D/D4.png",
+		"res://art/background/City D/D5.png"
+	],
+	[ # PACK 5 (10000 to 12500 Points)
+		"res://art/background/City E/E1.png",
+		"res://art/background/City E/E2.png",
+		"res://art/background/City E/E3.png",
+		"res://art/background/City E/E4.png",
+		"res://art/background/City E/E5.png"
+	],
+	[ # PACK 6 (12500 to 15000 Points)
+		"res://art/background/City F/F1.png",
+		"res://art/background/City F/F2.png",
+		"res://art/background/City F/F3.png",
+		"res://art/background/City F/F4.png",
+		"res://art/background/City F/F5.png"
+	],
+	[ # PACK 7 (15000 to 17500 Points)
+		"res://art/background/City G/G1.png",
+		"res://art/background/City G/G2.png",
+		"res://art/background/City G/G3.png",
+		"res://art/background/City G/G4.png",
+		"res://art/background/City G/G5.png"
+	],
+	[ # PACK 8 (17500 to 20000 Points)
+		"res://art/background/City H/H1.png",
+		"res://art/background/City H/H2.png",
+		"res://art/background/City H/H3.png",
+		"res://art/background/City H/H4.png",
+		"res://art/background/City H/H5.png"
+	]
+]
+
+@onready var pack_a: Node2D = $PackA
+@onready var pack_b: Node2D = $PackB
+
+var gm: GameManager = null
+var next_fade_score: float = 2500.0
+var is_fading: bool = false
+
+var current_pack_index: int = 0
+var active_is_pack_a: bool = true
+
+func _ready() -> void:
+	add_to_group("parallax_manager")
+	gm = get_tree().get_first_node_in_group("game_manager") as GameManager
+	_reset_visibility()
+
+func _physics_process(_delta: float) -> void:
+	if gm == null or not gm.running:
+		_set_layer_autoscroll(0.0)
+		return
+		
+	_set_layer_autoscroll(gm.current_speed * background_speed_modifier)
+		
+	if gm.current_score >= next_fade_score and not is_fading:
+		trigger_next_pack_fade()
+		next_fade_score += score_milestone
+
+func _set_layer_autoscroll(adjusted_speed: float) -> void:
+	for layer in pack_a.get_children():
+		if layer is Parallax2D:
+			layer.autoscroll.x = -adjusted_speed * layer.scroll_scale.x
+
+	for layer in pack_b.get_children():
+		if layer is Parallax2D:
+			layer.autoscroll.x = -adjusted_speed * layer.scroll_scale.x
+
+func _reset_visibility() -> void:
+	is_fading = false
+	next_fade_score = score_milestone
+	active_is_pack_a = true
+	
+	if not all_packs_textures.is_empty():
+		current_pack_index = randi() % all_packs_textures.size()
+	else:
+		current_pack_index = 0
+	
+	_load_pack_textures_into_node(pack_a, current_pack_index)
+	
+	pack_a.modulate = background_tint
+	pack_b.modulate = background_tint
+	
+	pack_a.modulate.a = 1.0
+	pack_b.modulate.a = 0.0
+
+func trigger_next_pack_fade() -> void:
+	if all_packs_textures.is_empty():
+		return
+		
+	is_fading = true
+	var next_pack_index = (current_pack_index + 1) % all_packs_textures.size()
+	
+	if active_is_pack_a:
+		_load_pack_textures_into_node(pack_b, next_pack_index)
+	else:
+		_load_pack_textures_into_node(pack_a, next_pack_index)
+		
+	var tween = create_tween().set_parallel(true)
+	
+	if active_is_pack_a:
+		tween.tween_property(pack_a, "modulate:a", 0.0, fade_duration).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(pack_b, "modulate:a", 1.0, fade_duration).set_trans(Tween.TRANS_SINE)
+	else:
+		tween.tween_property(pack_b, "modulate:a", 0.0, fade_duration).set_trans(Tween.TRANS_SINE)
+		tween.tween_property(pack_a, "modulate:a", 1.0, fade_duration).set_trans(Tween.TRANS_SINE)
+		
+	current_pack_index = next_pack_index
+	tween.finished.connect(_on_fade_completed)
+
+func _on_fade_completed() -> void:
+	active_is_pack_a = not active_is_pack_a
+	is_fading = false
+
+func _load_pack_textures_into_node(target_node: Node2D, pack_idx: int) -> void:
+	if pack_idx >= all_packs_textures.size():
+		return
+		
+	var pack_paths = all_packs_textures[pack_idx]
+	var layers = target_node.get_children()
+	
+	for i in range(min(layers.size(), pack_paths.size())):
+		var sprite = layers[i].get_node_or_null("Sprite2D") as Sprite2D
+		if sprite and pack_paths[i] != "":
+			sprite.texture = load(pack_paths[i])
+
+func reset_parallax_on_death() -> void:
+	_reset_visibility()
+
+
 ---- FILE: .\scripts\parkour_platform_chunk.gd ----
 extends PlatformChunk
 
@@ -854,19 +1059,19 @@ var _can_be_hit: bool = true
 
 var gm: GameManager
 var spawner: LevelSpawner
-var fader: ScreenFader
 
 var _shake_left: float = 0.0
 var _cam_base_pos: Vector2 = Vector2.ZERO
 var _is_shaking_continuously: bool = false
 
 var _start_pos: Vector2 = Vector2.ZERO
+var is_visually_flipped: bool = false
+var is_color_inverted: bool = false
 
 
 func _ready() -> void:
 	gm = get_parent().get_node("GameManager") as GameManager
 	spawner = get_parent().get_node("LevelSpawner") as LevelSpawner
-	fader = get_tree().get_first_node_in_group("screen_fader") as ScreenFader
 
 	state = PlayerState.IDLE
 	started = false
@@ -1107,15 +1312,10 @@ func _check_fall_reset() -> void:
 	_die_and_reset()
 
 func _die_and_reset() -> void:
-	if fader != null and fader.is_busy():
-		return
 
 	if gm != null:
 		gm.stop_running()
 
-	if fader != null:
-		fader.fade_reset_and_fade_in(Callable(self, "_reset_run"))
-	else:
 		_reset_run()
 
 func _reset_run() -> void:
@@ -1134,6 +1334,15 @@ func _reset_run() -> void:
 	_air_dash_used_this_air = false
 	_start_cooldown_on_next_landing = false
 
+	is_visually_flipped = false
+	is_color_inverted = false
+
+	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
+	if shader_rect and shader_rect.material:
+		var mat = shader_rect.material as ShaderMaterial
+		mat.set_shader_parameter("flip_y", false)
+		mat.set_shader_parameter("invert_colors", false)
+
 	if standard_shape != null:
 		standard_shape.set_deferred("disabled", false)
 	if dash_shape != null:
@@ -1141,9 +1350,12 @@ func _reset_run() -> void:
 
 	if spawner != null:
 		spawner.reset_spawner()
+		
+	var parallax_mgr = get_tree().get_first_node_in_group("parallax_manager") as ParallaxBackgroundManager
+	if parallax_mgr != null:
+		parallax_mgr.reset_parallax_on_death()
 
 func _handle_dash(delta: float) -> void:
-	# Cooldown countdown (ONLY blocks air dash)
 	if _dash_cooldown_left > 0.0:
 		_dash_cooldown_left -= delta
 
@@ -1288,58 +1500,32 @@ func set_continuous_shake(is_shaking: bool) -> void:
 	if is_shaking and cam != null:
 		_cam_base_pos = cam.position
 
+func flip_gravity() -> void:
+	is_visually_flipped = !is_visually_flipped
+	
+	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
+	if shader_rect and shader_rect.material:
+		var mat = shader_rect.material as ShaderMaterial
+		
+		mat.set_shader_parameter("flip_y", is_visually_flipped)
 
----- FILE: .\scripts\screen_fader.gd ----
-extends CanvasLayer
-class_name ScreenFader
+func toggle_color_inversion() -> void:
+	is_color_inverted = !is_color_inverted
+	
+	var main_node = get_tree().root.get_node_or_null("Main")
+	var shader_rect: ColorRect = null
+	
+	if main_node:
+		shader_rect = main_node.get_node_or_null("MirrorLayer/ShaderRect") as ColorRect
+	else:
+		shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
 
-@onready var flash: ColorRect = $Flash
-@onready var gm: GameManager = get_tree().get_first_node_in_group("game_manager") as GameManager
-
-@export var fade_out_time: float = 0.18
-@export var hold_time: float = 0.05
-@export var fade_in_time: float = 0.22
-
-var _busy: bool = false
-
-func _ready() -> void:
-	add_to_group("screen_fader")
-	flash.color = Color(1, 1, 1, 0)
-	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-func is_busy() -> bool:
-	return _busy
-
-func fade_reset_and_fade_in(reset_callable: Callable) -> void:
-	if _busy:
-		return
-	_busy = true
-
-	if gm != null:
-		gm.can_start = false
-
-	# Fade to white
-	var t_out := create_tween()
-	t_out.tween_property(flash, "color:a", 1.0, fade_out_time)
-	await t_out.finished
-
-	# Small hold at white
-	if hold_time > 0.0:
-		await get_tree().create_timer(hold_time).timeout
-
-	# Perform reset
-	if reset_callable.is_valid():
-		reset_callable.call()
-
-	# Fade back to transparent
-	var t_in := create_tween()
-	t_in.tween_property(flash, "color:a", 0.0, fade_in_time)
-	await t_in.finished
-
-	if gm != null:
-		gm.can_start = true
-
-	_busy = false
+	if shader_rect and shader_rect.material:
+		var mat = shader_rect.material as ShaderMaterial
+		mat.set_shader_parameter("invert_colors", is_color_inverted)
+		print("Shader parameter 'invert_colors' successfully set to: ", is_color_inverted)
+	else:
+		push_error("Player: Cannot find ShaderRect or its material!")
 
 
 ---- FILE: .\scripts\shaking_platform_chunk.gd ----

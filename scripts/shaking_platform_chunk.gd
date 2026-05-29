@@ -5,6 +5,7 @@ extends PlatformChunk
 var _player_ref: CharacterBody2D = null
 
 func _ready() -> void:
+	super._ready()
 	chunk_width = 1584.0
 	
 	if step_trigger:

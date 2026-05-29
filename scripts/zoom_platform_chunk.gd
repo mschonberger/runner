@@ -6,6 +6,7 @@ var _zoom_triggered: bool = false
 var _original_offset_x: float = 200.0
 
 func _ready() -> void:
+	super._ready()
 	chunk_width = 1584.0
 
 func _physics_process(delta: float) -> void:

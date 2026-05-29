@@ -1,4 +1,3 @@
-# res://scripts/obstacle_platform_chunk.gd
 extends PlatformChunk
 
 @export var normal_obstacle_scene: PackedScene
@@ -10,7 +9,7 @@ extends PlatformChunk
 @export var min_space_between_hazards: float = 180.0
 
 func _ready() -> void:
-	# Force our updated strict size constraints globally
+	super._ready()
 	chunk_width = 2112.0
 	
 	if normal_obstacle_scene == null:
@@ -22,11 +21,9 @@ func init_obstacle_chunk() -> void:
 	_generate_massive_gauntlet()
 
 func _generate_massive_gauntlet() -> void:
-	# 1. Choose a high density count between our strict 4 and 7 range
 	var obstacle_count := randi_range(min_obstacles_per_chunk, max_obstacles_per_chunk)
 	var occupied_x_positions: Array[float] = []
-	
-	# Keep hazards safely away from the absolute edges of our 2112px layout
+
 	var min_bound := -950.0
 	var max_bound := 950.0
 	
@@ -35,7 +32,6 @@ func _generate_massive_gauntlet() -> void:
 		var valid_spot := false
 		var attempts := 0
 		
-		# 2. Position Lottery Loop
 		while not valid_spot and attempts < 30:
 			attempts += 1
 			spawn_x = randf_range(min_bound, max_bound)
@@ -54,7 +50,6 @@ func _generate_massive_gauntlet() -> void:
 			
 		occupied_x_positions.append(spawn_x)
 		
-		# 3. Determine Object Type
 		var obstacle_scene := normal_obstacle_scene
 		if randf() < deadly_chance:
 			obstacle_scene = deadly_obstacle_scene
@@ -62,8 +57,7 @@ func _generate_massive_gauntlet() -> void:
 		var obstacle := obstacle_scene.instantiate() as Node2D
 		if obstacle == null: 
 			continue
-			
-		# 4. Vertical Layer Selection (Ground, Low Float, High Float)
+
 		var ground_y := -32.0 
 		var spawn_y := ground_y
 		

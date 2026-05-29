@@ -9,6 +9,7 @@ var _is_sinking: bool = false
 var _initial_y: float = 0.0
 
 func _ready() -> void:
+	super._ready()
 	chunk_width = 1584.0
 	_initial_y = global_position.y
 	if step_trigger:
