@@ -1,0 +1,318 @@
+[gd_scene load_steps=15 format=3 uid="uid://bs8fu7cknyfbg"]
+
+[ext_resource type="Script" uid="uid://d0gbpgad8ucvp" path="res://scenes/intro_logo.gd" id="1_qdwl0"]
+[ext_resource type="Texture2D" uid="uid://brk72yox16uhy" path="res://art/intro/Background.png" id="2_4oxqo"]
+[ext_resource type="Texture2D" uid="uid://dlpntx6bgx7hv" path="res://art/intro/Border.png" id="2_tsgyx"]
+[ext_resource type="Texture2D" uid="uid://k0mjg3sm6cos" path="res://art/intro/Top.png" id="3_4oxqo"]
+[ext_resource type="Texture2D" uid="uid://b6w6rsp7wgavu" path="res://art/intro/Bottom.png" id="4_fd8br"]
+[ext_resource type="Texture2D" uid="uid://cq5sexthkhl20" path="res://art/intro/M.png" id="5_eqt6q"]
+[ext_resource type="Texture2D" uid="uid://bp8tmmbcky385" path="res://art/intro/S.png" id="6_sdnsd"]
+[ext_resource type="AudioStream" uid="uid://c6oswo74h4c0d" path="res://art/sfx/hit-1.wav" id="8_6yttl"]
+[ext_resource type="AudioStream" uid="uid://yy57ypb6ovxh" path="res://art/sfx/hit-2.wav" id="9_qxfoj"]
+[ext_resource type="AudioStream" uid="uid://dchffjclekqho" path="res://art/sfx/knife-hit.wav" id="10_0iisf"]
+[ext_resource type="AudioStream" uid="uid://cectrqra56mxt" path="res://art/sfx/gunshot.wav" id="11_i13ma"]
+
+[sub_resource type="Animation" id="Animation_0jspe"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SceneWrapper/Border:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("SceneWrapper/Top:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("SceneWrapper/Bottom:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(0, 0)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("SceneWrapper/M:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(0, 0)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("SceneWrapper/S:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("SceneWrapper/S:scale")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("SceneWrapper/M:scale")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("SceneWrapper/Top:scale")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1.1)]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("SceneWrapper/Bottom:scale")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector2(1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_x6e53"]
+resource_name = "intro"
+length = 7.5
+step = 0.1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SceneWrapper/Border:modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 4, 6),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 0), Color(1, 1, 1, 0), Color(1, 1, 1, 1)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("SceneWrapper/Top:position")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(1, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(0, -108), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("SceneWrapper/Bottom:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(1, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(0, 108), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("SceneWrapper/M:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 1, 1.5, 2, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(-192, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("SceneWrapper/S:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 1, 1.5, 2, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(192, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("SceneWrapper/S:scale")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(1, 1.5, 2, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(0.9, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 0.9), Vector2(1, 1)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("SceneWrapper/M:scale")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(1, 1.5, 2, 3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(0.9, 1), Vector2(1, 1), Vector2(1, 1), Vector2(1, 0.9), Vector2(1, 1)]
+}
+tracks/7/type = "value"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("SceneWrapper/Top:scale")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = {
+"times": PackedFloat32Array(3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(1, 0.9), Vector2(1, 1)]
+}
+tracks/8/type = "value"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("SceneWrapper/Bottom:scale")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = {
+"times": PackedFloat32Array(3, 3.5, 4),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector2(1, 1), Vector2(1, 0.9), Vector2(1, 1)]
+}
+tracks/9/type = "method"
+tracks/9/imported = false
+tracks/9/enabled = true
+tracks/9/path = NodePath(".")
+tracks/9/interp = 1
+tracks/9/loop_wrap = true
+tracks/9/keys = {
+"times": PackedFloat32Array(0.9, 2.9, 4),
+"transitions": PackedFloat32Array(1, 1, 1),
+"values": [{
+"args": [],
+"method": &"play_sfx1"
+}, {
+"args": [],
+"method": &"play_sfx2"
+}, {
+"args": [],
+"method": &"play_sfx3"
+}]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_j6uo2"]
+_data = {
+&"RESET": SubResource("Animation_0jspe"),
+&"intro": SubResource("Animation_x6e53")
+}
+
+[node name="IntroLogo" type="Node2D"]
+script = ExtResource("1_qdwl0")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+zoom = Vector2(3, 3)
+
+[node name="Background" type="Sprite2D" parent="."]
+texture = ExtResource("2_4oxqo")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("AnimationLibrary_j6uo2")
+}
+
+[node name="SceneWrapper" type="Node2D" parent="."]
+
+[node name="Border" type="Sprite2D" parent="SceneWrapper"]
+modulate = Color(1, 1, 1, 0)
+position = Vector2(-96, -54)
+texture = ExtResource("2_tsgyx")
+centered = false
+
+[node name="Top" type="Sprite2D" parent="SceneWrapper"]
+scale = Vector2(1, 1.1)
+texture = ExtResource("3_4oxqo")
+centered = false
+offset = Vector2(-96, -54)
+
+[node name="Bottom" type="Sprite2D" parent="SceneWrapper"]
+texture = ExtResource("4_fd8br")
+centered = false
+offset = Vector2(-96, -54)
+
+[node name="M" type="Sprite2D" parent="SceneWrapper"]
+texture = ExtResource("5_eqt6q")
+centered = false
+offset = Vector2(-96, -54)
+
+[node name="S" type="Sprite2D" parent="SceneWrapper"]
+texture = ExtResource("6_sdnsd")
+centered = false
+offset = Vector2(-96, -54)
+
+[node name="Hit1Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("8_6yttl")
+
+[node name="Hit2Sound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("9_qxfoj")
+
+[node name="KnifeSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("10_0iisf")
+
+[node name="GunSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("11_i13ma")

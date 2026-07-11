@@ -1,7 +1,7 @@
 extends PlatformChunk
 
-@export var sink_speed: float = 75.0 
-@export var max_sink_depth: float = 110.0 
+@export var sink_speed: float = 75.0
+@export var max_sink_depth: float = 110.0
 
 @onready var step_trigger: Area2D = $StepTrigger
 
@@ -17,13 +17,13 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
-	
+
 	if _is_sinking:
 		if position.y < _initial_y + max_sink_depth:
 			position.y += sink_speed * delta
-			
+
 			constant_linear_velocity.y = sink_speed
-			
+
 			if position.y >= _initial_y + max_sink_depth:
 				position.y = _initial_y + max_sink_depth
 				constant_linear_velocity.y = 0.0

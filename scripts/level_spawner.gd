@@ -4,8 +4,8 @@ class_name LevelSpawner
 @export var normal_platform_scenes: Array[PackedScene] = []
 @export var special_platform_scenes: Array[Dictionary] = []
 
-@export var spawn_buffer_x: float = 800.0   
-@export var destroy_buffer_x: float = -600.0 
+@export var spawn_buffer_x: float = 800.0
+@export var destroy_buffer_x: float = -600.0
 
 @export var max_step_offset: float = 24.0
 @export var max_total_offset: float = 72.0
@@ -13,7 +13,7 @@ class_name LevelSpawner
 var active_chunks: Array[PlatformChunk] = []
 var next_spawn_x: float = 0.0
 var last_height_offset: float = 0.0
-var track_base_y: float = 328.0 
+var track_base_y: float = 328.0
 var last_spawned_was_special: bool = false
 
 func _ready() -> void:
@@ -38,7 +38,7 @@ func spawn_next_chunk(gm: GameManager) -> void:
 	var picked_scene: PackedScene
 	var current_score := gm.current_score
 	var chosen_as_special := false
-	
+
 	var special_chance := 0.0
 	if current_score > 100.0:
 		special_chance = clampf(remap(current_score, 100.0, 1000.0, 0.0, 0.45), 0.0, 0.45)
@@ -64,7 +64,7 @@ func spawn_next_chunk(gm: GameManager) -> void:
 		-max_total_offset,
 		max_total_offset
 	)
-	
+
 	var gap := randf_range(320.0, 480.0)
 	var spawn_pos_x := next_spawn_x + gap + (chunk.chunk_width / 2.0)
 	var spawn_pos_y := track_base_y + next_offset
@@ -78,7 +78,7 @@ func spawn_next_chunk(gm: GameManager) -> void:
 		chunk.call("init_chunk")
 
 	active_chunks.append(chunk)
-	
+
 	next_spawn_x = chunk.position.x + (chunk.chunk_width / 2.0)
 	last_height_offset = next_offset
 
@@ -95,14 +95,14 @@ func reset_spawner() -> void:
 	if not normal_platform_scenes.is_empty():
 		var first_scene := normal_platform_scenes[0]
 		var chunk := first_scene.instantiate() as PlatformChunk
-		
+
 		if chunk.has_method("randomize_chunk_width"):
 			chunk.call("randomize_chunk_width")
-		
+
 		var spawn_pos_x := chunk.chunk_width / 2.0
 		chunk.position = Vector2(spawn_pos_x, track_base_y)
 		add_child(chunk)
-		
+
 		active_chunks.append(chunk)
 		next_spawn_x = chunk.position.x + (chunk.chunk_width / 2.0)
 
@@ -122,13 +122,13 @@ func _pick_weighted_special_scene(current_score: float) -> PackedScene:
 
 	var valid_elements: Array[Dictionary] = []
 	var total_weight: int = 0
-	
+
 	for element in special_platform_scenes:
 		if element.has("scene") and element.has("weight"):
 			var min_score: float = 0.0
 			if element.has("min_score"):
 				min_score = float(element["min_score"])
-				
+
 			if current_score >= min_score:
 				valid_elements.append(element)
 				total_weight += int(element["weight"])
@@ -142,7 +142,7 @@ func _pick_weighted_special_scene(current_score: float) -> PackedScene:
 
 	var roll := randi_range(1, total_weight)
 	var current_sum: int = 0
-	
+
 	for element in valid_elements:
 		current_sum += int(element["weight"])
 		if roll <= current_sum:

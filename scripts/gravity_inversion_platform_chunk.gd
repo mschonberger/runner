@@ -12,7 +12,7 @@ func _ready() -> void:
 func _on_player_passed_center(body: Node) -> void:
 	if _triggered:
 		return
-		
+
 	if body.is_in_group("player") and body.has_method("flip_gravity"):
 		_triggered = true
 		body.flip_gravity()

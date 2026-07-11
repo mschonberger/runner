@@ -17,7 +17,7 @@ extends PlatformChunk
 
 func _ready() -> void:
 	chunk_width = 1584.0
-	
+
 	var generic_sprite = get_node_or_null("Sprite2D")
 	if generic_sprite:
 		generic_sprite.queue_free()
@@ -50,7 +50,7 @@ func _apply_corridor_layout() -> void:
 	var r_floor := RectangleShape2D.new()
 	r_floor.size = Vector2(chunk_width, floor_height)
 	col_floor.shape = r_floor
-		
+
 	col_ceiling.position = Vector2(0, ceiling_y)
 	var r_ceil := RectangleShape2D.new()
 	r_ceil.size = Vector2(chunk_width, ceiling_height)
@@ -64,7 +64,7 @@ func _apply_corridor_layout() -> void:
 		var ceiling_surface_y := -corridor_clearance_px
 		ceiling_sprite.position = Vector2(0.0, ceiling_surface_y - 475.0)
 		ceiling_sprite.scale = Vector2.ONE
-		ceiling_sprite.flip_v = true 
+		ceiling_sprite.flip_v = true
 
 		var shader_res = load("res://shader/color_replace.gdshader") as Shader
 		if shader_res:
@@ -81,20 +81,20 @@ func _apply_corridor_layout() -> void:
 func _generate_corridor_hazards() -> void:
 	var obstacle_count := randi_range(min_obstacles, max_obstacles)
 	var occupied_x_positions: Array[float] = []
-	
+
 	var min_bound := -650.0
 	var max_bound := 650.0
 	var ground_surface_y := 0.0
-	
+
 	for i in range(obstacle_count):
 		var spawn_x := 0.0
 		var valid_spot := false
 		var attempts := 0
-		
+
 		while not valid_spot and attempts < 40:
 			attempts += 1
 			spawn_x = randf_range(min_bound, max_bound)
-			
+
 			var too_close := false
 			for pos in occupied_x_positions:
 				if absf(spawn_x - pos) < min_space_between_hazards:
@@ -102,20 +102,20 @@ func _generate_corridor_hazards() -> void:
 					break
 			if not too_close:
 				valid_spot = true
-				
+
 		if not valid_spot:
 			continue
-			
+
 		occupied_x_positions.append(spawn_x)
-		
+
 		var obstacle := normal_obstacle_scene.instantiate() as Node2D
-		if obstacle == null: 
+		if obstacle == null:
 			continue
 
 		obstacle.position = Vector2(spawn_x, ground_surface_y)
 		obstacle.scale = Vector2(0.6, 0.6)
 		obstacle.z_index = 10
 		add_child(obstacle)
-		
+
 func randomize_chunk_width() -> void:
 	chunk_width = 1584

@@ -17,6 +17,11 @@ enum PlayerState {
 @onready var standard_shape: CollisionShape2D = $StandardShape
 @onready var dash_shape: CollisionShape2D = $DashShape
 
+@onready var jump_sound: AudioStreamPlayer = $JumpSound
+@onready var slide_sound: AudioStreamPlayer = $SlideSound
+@onready var hit_sound: AudioStreamPlayer = $HitSound
+@onready var grunt_sound: AudioStreamPlayer = $GruntSound
+
 @export var base_gravity: float = 1800.0
 
 @export var jump_velocity_min: float = -560.0
@@ -184,6 +189,7 @@ func _handle_start_or_jump() -> void:
 		velocity.y = _effective_jump_velocity()
 		state = PlayerState.JUMP
 		coyote_time_left = 0.0
+		if jump_sound: jump_sound.play()
 
 func _handle_emergency_jump() -> void:
 	if gm != null and not gm.can_start:
@@ -192,6 +198,7 @@ func _handle_emergency_jump() -> void:
 	if Input.is_action_just_pressed("jump") and coyote_time_left > 0.0:
 		velocity.y = _effective_jump_velocity()
 		coyote_time_left = 0.0
+		if jump_sound: jump_sound.play()
 
 func _handle_variable_jump() -> void:
 	if Input.is_action_just_released("jump"):
@@ -251,7 +258,7 @@ func _update_animation() -> void:
 		PlayerState.HIT:
 			_play_if_not("hurt")
 		PlayerState.DASH:
-			# Air dash uses air_spin; ground dash uses dash
+
 			if _dash_started_in_air:
 				if anim.sprite_frames.has_animation("air_spin"):
 					_play_if_not("air_spin")
@@ -278,6 +285,8 @@ func apply_hit() -> void:
 	state = PlayerState.HIT
 	_start_shake()
 
+	if hit_sound: hit_sound.play()
+
 	var timer := get_tree().create_timer(hit_lock_time)
 	timer.timeout.connect(_end_hit)
 
@@ -300,9 +309,9 @@ func _update_shake(delta: float) -> void:
 	if _is_shaking_continuously or _shake_left > 0.0:
 		if _shake_left > 0.0:
 			_shake_left -= delta
-			
+
 		var current_strength = shake_strength * 1.5 if _is_shaking_continuously else shake_strength
-		
+
 		var off := Vector2(
 			randf_range(-current_strength, current_strength),
 			randf_range(-current_strength, current_strength)
@@ -318,6 +327,7 @@ func _check_fall_reset() -> void:
 	_die_and_reset()
 
 func _die_and_reset() -> void:
+	if grunt_sound: grunt_sound.play()
 
 	if gm != null:
 		gm.stop_running()
@@ -356,7 +366,7 @@ func _reset_run() -> void:
 
 	if spawner != null:
 		spawner.reset_spawner()
-		
+
 	var parallax_mgr = get_tree().get_first_node_in_group("parallax_manager") as ParallaxBackgroundManager
 	if parallax_mgr != null:
 		parallax_mgr.reset_parallax_on_death()
@@ -394,6 +404,7 @@ func _handle_dash(delta: float) -> void:
 				standard_shape.disabled = true
 			if dash_shape != null:
 				dash_shape.disabled = false
+			if slide_sound: slide_sound.play()
 
 		gm.current_speed += dash_speed_bonus
 		gm.current_speed = min(gm.current_speed, gm.max_speed)
@@ -480,22 +491,22 @@ func _check_wall_collisions() -> void:
 
 		if collider is PlatformChunk:
 			var normal := collision.get_normal()
-			
+
 			if normal.x < -0.7 and abs(normal.y) < 0.5:
 				coyote_time_left = 0.0
-				
+
 				started = false
-				
+
 				apply_hit()
-				
+
 				if gm != null:
 					gm.current_speed = 0.0
 					gm.running = false
-				
-				velocity.y = 0.0 
-				
+
+				velocity.y = 0.0
+
 				get_tree().create_timer(0.4).timeout.connect(
-					func(): 
+					func():
 						if not started:
 							_die_and_reset()
 				)
@@ -508,19 +519,19 @@ func set_continuous_shake(is_shaking: bool) -> void:
 
 func flip_gravity() -> void:
 	is_visually_flipped = !is_visually_flipped
-	
+
 	var shader_rect = get_tree().get_root().find_child("ShaderRect", true, false) as ColorRect
 	if shader_rect and shader_rect.material:
 		var mat = shader_rect.material as ShaderMaterial
-		
+
 		mat.set_shader_parameter("flip_y", is_visually_flipped)
 
 func toggle_color_inversion() -> void:
 	is_color_inverted = !is_color_inverted
-	
+
 	var main_node = get_tree().root.get_node_or_null("Main")
 	var shader_rect: ColorRect = null
-	
+
 	if main_node:
 		shader_rect = main_node.get_node_or_null("MirrorLayer/ShaderRect") as ColorRect
 	else:

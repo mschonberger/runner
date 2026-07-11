@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://dx7tgfrq7ce3b"]
+[gd_scene load_steps=20 format=3 uid="uid://dx7tgfrq7ce3b"]
 
 [ext_resource type="PackedScene" uid="uid://chdnluwit5sdn" path="res://scenes/ground_segment.tscn" id="1_0wfyh"]
 [ext_resource type="PackedScene" uid="uid://dbxdm2kl70rn5" path="res://scenes/parallax_background_manager.tscn" id="1_jkv2x"]
@@ -16,6 +16,7 @@
 [ext_resource type="PackedScene" uid="uid://c70kn4k378y2f" path="res://scenes/mobile_controls.tscn" id="10_choun"]
 [ext_resource type="PackedScene" uid="uid://djcbbdtxs7hoe" path="res://scenes/chunks/gravity_inversion_platform_chunk.tscn" id="11_jbj1t"]
 [ext_resource type="PackedScene" uid="uid://cwwcxobrqiqtr" path="res://scenes/chunks/color_inversion_platform_chunk.tscn" id="12_muem4"]
+[ext_resource type="AudioStream" uid="uid://bp4k0mbg6o13t" path="res://art/bgm/bgm_loop.wav" id="15_dp3eg"]
 [ext_resource type="Shader" uid="uid://b010kcy8ra34t" path="res://shader/screen_mirror.gdshader" id="17_muem4"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_dp3eg"]
@@ -79,6 +80,10 @@ offset = Vector2(200, 0)
 [node name="GameManager" type="Node" parent="." groups=["game_manager"]]
 script = ExtResource("3_sugp2")
 
+[node name="BGMPlayer" type="AudioStreamPlayer2D" parent="GameManager"]
+stream = ExtResource("15_dp3eg")
+autoplay = true
+
 [node name="UI" type="CanvasLayer" parent="."]
 layer = 2
 script = ExtResource("6_tefeu")
@@ -106,7 +111,8 @@ offset_right = 79.5
 offset_bottom = -37.0
 grow_horizontal = 2
 grow_vertical = 0
-text = "Push [Space] to start"
+text = "Push [Space] to start
+Push [Dash] to change Name"
 horizontal_alignment = 1
 
 [node name="ControlsLabel" type="Label" parent="UI"]

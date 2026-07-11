@@ -1,4 +1,3 @@
-# res://scripts/ui.gd
 extends CanvasLayer
 
 @onready var label: Label = $ScoreLabel
@@ -9,10 +8,10 @@ var gm: GameManager
 var blink_timer: float = 0.0
 var blink_speed: float = 4.5
 
-# Custom Virtual Keyboard Containers
+
 var entry_panel: PanelContainer
 var display_name_label: Label
-var title_label: Label 
+var title_label: Label
 var mobile_controls_node: CanvasLayer = null
 
 var global_highest_score: int = 0
@@ -46,10 +45,13 @@ func _process(delta: float) -> void:
 	else:
 		if start_label != null: start_label.visible = true
 		if controls_label != null: controls_label.visible = true
-		
+
 		blink_timer += delta
 		if start_label != null:
 			start_label.modulate.a = (sin(blink_timer * blink_speed) + 1.0) / 2.0
+
+		if Input.is_action_just_pressed("dash"):
+			_open_name_onboarding()
 
 func _update_score_ui_display() -> void:
 	if gm.running:
@@ -60,10 +62,10 @@ func _update_score_ui_display() -> void:
 		]
 	else:
 		var text_output = "Score: %d\n\n== LOCAL TOP 3 ==\n" % int(gm.current_score)
-		
+
 		var unique_local_entries: Array = []
 		var seen_local_names: Dictionary = {}
-		
+
 		for entry in gm.leaderboard:
 			var name_key: String = entry["name"].to_upper().strip_edges()
 			if not seen_local_names.has(name_key):
@@ -74,7 +76,7 @@ func _update_score_ui_display() -> void:
 		for i in range(display_limit):
 			var entry = unique_local_entries[i]
 			text_output += "%d. %-8s : %d\n" % [i + 1, entry["name"], int(entry["score"])]
-		
+
 		text_output += "\n" + global_leaderboard_text
 		label.text = text_output
 
@@ -82,9 +84,7 @@ func _setup_initial_ui_text() -> void:
 	if controls_label != null:
 		controls_label.text = "CONTROLS:\n\n[ Space ] ──── Jump\n[ Ctrl ]  ──── Slide (On Ground)\n[ Ctrl ]  ──── Dash (In Air)\n[ Tap Left Side ]  ──── Dash\n[ Tap Right Side ]  ──── Jump"
 	if start_label != null:
-		start_label.text = "PRESS SPACE TO START"
-
-# === IN-GAME VIRTUAL KEYBOARD GRAPHICS ENGINE ===
+		start_label.text = "Push [Space] to start\nPush [Dash] to change your Name"
 
 func _build_procedural_virtual_keyboard_ui() -> void:
 	entry_panel = PanelContainer.new()
@@ -111,22 +111,23 @@ func _build_procedural_virtual_keyboard_ui() -> void:
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(title_label)
 
-	# Name Text Display Panel Room
+
 	display_name_label = Label.new()
 	display_name_label.text = "________"
 	display_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	display_name_label.add_theme_font_size_override("font_size", 24)
 	vbox.add_child(display_name_label)
 
-	# Build Keyboard Character Selection Matrix (Grid)
+
+	var center_container = CenterContainer.new()
+	vbox.add_child(center_container)
+
 	var grid = GridContainer.new()
 	grid.columns = 7
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(grid)
+	center_container.add_child(grid)
 
-	# Generate character strings procedurally
 	var alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	for i in range(alphabet.length()):
 		var char_letter = alphabet[i]
@@ -136,21 +137,19 @@ func _build_procedural_virtual_keyboard_ui() -> void:
 		btn.pressed.connect(_on_keyboard_char_pressed.bind(char_letter))
 		grid.add_child(btn)
 
-	# Backspace Button
+
 	var btn_back = Button.new()
 	btn_back.text = "DEL"
 	btn_back.custom_minimum_size = Vector2(44, 44)
 	btn_back.pressed.connect(_on_keyboard_backspace_pressed)
 	grid.add_child(btn_back)
 
-	# Submit Confirmation Button
+
 	var btn_enter = Button.new()
 	btn_enter.text = "OK"
-	btn_enter.custom_minimum_size = Vector2(94, 44)
-	btn_enter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_enter.custom_minimum_size = Vector2(44, 44)
 	btn_enter.pressed.connect(_on_keyboard_submit_pressed)
-	
-	# Add spacing component step to balance asymmetric grid line length layout
+
 	grid.add_child(btn_enter)
 
 func _open_name_onboarding() -> void:
@@ -180,7 +179,7 @@ func _on_keyboard_submit_pressed() -> void:
 	var final_name = entered_string.strip_edges()
 	if final_name.is_empty():
 		final_name = "RUNNER"
-	
+
 	gm.save_player_name(final_name)
 	_complete_onboarding(final_name)
 
@@ -188,7 +187,7 @@ func _complete_onboarding(_confirmed_name: String) -> void:
 	entry_panel.visible = false
 	_toggle_touch_zones(true)
 	gm.can_start = true
-	
+
 	await fetch_global_scores()
 	await get_tree().create_timer(1.0).timeout
 	await fetch_global_scores()
@@ -201,40 +200,37 @@ func _toggle_touch_zones(enable_touch: bool) -> void:
 		else:
 			mobile_controls_node.process_mode = PROCESS_MODE_DISABLED
 
-# === CLOUD NETWORK LEADERBOARD CACHE PROCESSING ===
-
 func fetch_global_scores() -> void:
-	await SilentWolf.Scores.get_scores(10).sw_get_scores_complete
-	var remote_scores: Array = SilentWolf.Scores.scores
-	
+	var remote_scores: Array = await TaloManager.fetch_top_scores(TaloManager.LEADERBOARD_NAME)
+
 	if not remote_scores.is_empty():
-		# Save the absolute highest score for the "Online Record" tracker
+
 		global_highest_score = int(remote_scores[0].get("score", 0))
-		
+
 		var leaderboard_lines: Array[String] = ["== GLOBAL TOP 3 =="]
 		var seen_global_names: Dictionary = {}
 		var rank = 1
-		
-		# --- Filter Global Duplicates ---
+
+
 		for entry in remote_scores:
 			if rank > 3:
 				break
-				
+
 			var p_name: String = entry.get("player_name", "ANON").to_upper().strip_edges()
 			var p_score: int = int(entry.get("score", 0))
-			
+
 			if seen_global_names.has(p_name):
 				continue
-				
+
 			seen_global_names[p_name] = true
 			leaderboard_lines.append("%d. %-8s : %d" % [rank, p_name, p_score])
 			rank += 1
-			
+
 		global_leaderboard_text = "\n".join(leaderboard_lines)
 	else:
 		global_highest_score = 0
 		global_leaderboard_text = "== GLOBAL TOP 3 =="
-		
+
 	_update_score_ui_display()
 
 func _on_global_score_upload_completed() -> void:

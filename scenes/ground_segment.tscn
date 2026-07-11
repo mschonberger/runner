@@ -1,13 +1,20 @@
-[gd_scene load_steps=4 format=3 uid="uid://chdnluwit5sdn"]
+[gd_scene load_steps=10 format=3 uid="uid://chdnluwit5sdn"]
 
 [ext_resource type="Script" uid="uid://cjpqt5ek08ev4" path="res://scripts/ground_segment.gd" id="1_l4x32"]
+[ext_resource type="Texture2D" uid="uid://bh52sjovl767s" path="res://art/houses/1056 House 1.png" id="2_oquws"]
 [ext_resource type="Texture2D" uid="uid://butr8e5ehwoj8" path="res://art/floor/GroundA.png" id="3_1yva4"]
+[ext_resource type="Texture2D" uid="uid://ck51cs7pogiwx" path="res://art/houses/1056 House 2.png" id="3_yvg0l"]
+[ext_resource type="Texture2D" uid="uid://dkamptbrknn5g" path="res://art/houses/1056 House 3.png" id="4_lr5v1"]
+[ext_resource type="Texture2D" uid="uid://ci7aa5k0vjnyb" path="res://art/houses/1056 House 4.png" id="5_qkqax"]
+[ext_resource type="Texture2D" uid="uid://d3lfry7xa1fgv" path="res://art/houses/1056 House 5.png" id="6_stefw"]
+[ext_resource type="Texture2D" uid="uid://dolucyks5yi21" path="res://art/houses/1056 House 6.png" id="7_tf4ji"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_l4x32"]
 size = Vector2(1056, 64)
 
 [node name="GroundSegment" type="StaticBody2D"]
 script = ExtResource("1_l4x32")
+house_textures = Array[Texture2D]([ExtResource("2_oquws"), ExtResource("3_yvg0l"), ExtResource("4_lr5v1"), ExtResource("5_qkqax"), ExtResource("6_stefw"), ExtResource("7_tf4ji")])
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 texture = ExtResource("3_1yva4")

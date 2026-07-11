@@ -3,15 +3,15 @@ extends PlatformChunk
 @export var normal_obstacle_scene: PackedScene
 @export var deadly_obstacle_scene: PackedScene
 
-@export var deadly_chance: float = 0.28         
-@export var min_obstacles_per_chunk: int = 4   
-@export var max_obstacles_per_chunk: int = 7   
+@export var deadly_chance: float = 0.28
+@export var min_obstacles_per_chunk: int = 4
+@export var max_obstacles_per_chunk: int = 7
 @export var min_space_between_hazards: float = 180.0
 
 func _ready() -> void:
 	super._ready()
 	chunk_width = 2112.0
-	
+
 	if normal_obstacle_scene == null:
 		normal_obstacle_scene = load("res://scenes/obstacle.tscn")
 	if deadly_obstacle_scene == null:
@@ -26,47 +26,47 @@ func _generate_massive_gauntlet() -> void:
 
 	var min_bound := -950.0
 	var max_bound := 950.0
-	
+
 	for i in range(obstacle_count):
 		var spawn_x := 0.0
 		var valid_spot := false
 		var attempts := 0
-		
+
 		while not valid_spot and attempts < 30:
 			attempts += 1
 			spawn_x = randf_range(min_bound, max_bound)
-			
+
 			var too_close := false
 			for pos in occupied_x_positions:
 				if absf(spawn_x - pos) < min_space_between_hazards:
 					too_close = true
 					break
-			
+
 			if not too_close:
 				valid_spot = true
-		
+
 		if not valid_spot:
 			continue
-			
+
 		occupied_x_positions.append(spawn_x)
-		
+
 		var obstacle_scene := normal_obstacle_scene
 		if randf() < deadly_chance:
 			obstacle_scene = deadly_obstacle_scene
-			
+
 		var obstacle := obstacle_scene.instantiate() as Node2D
-		if obstacle == null: 
+		if obstacle == null:
 			continue
 
-		var ground_y := -32.0 
+		var ground_y := -32.0
 		var spawn_y := ground_y
-		
+
 		var height_roll := randf()
 		if height_roll < 0.25:
 			spawn_y = ground_y - 52.0
 		elif height_roll < 0.45:
 			spawn_y = ground_y - 24.0
-		
+
 		obstacle.position = Vector2(spawn_x, spawn_y)
 		obstacle.scale = Vector2(0.6, 0.6)
 		obstacle.z_index = 10

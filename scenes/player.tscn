@@ -1,4 +1,4 @@
-[gd_scene load_steps=90 format=3 uid="uid://claope6c5rjub"]
+[gd_scene load_steps=94 format=3 uid="uid://claope6c5rjub"]
 
 [ext_resource type="Script" uid="uid://cnfkwefr05cdd" path="res://scripts/player.gd" id="1_d2wvv"]
 [ext_resource type="Texture2D" uid="uid://bfec5mt6aacsa" path="res://art/player/AirSpin.png" id="2_3v2ag"]
@@ -11,6 +11,10 @@
 [ext_resource type="Texture2D" uid="uid://by4y4x51up4qh" path="res://art/player/Run.png" id="9_4r5pv"]
 [ext_resource type="Texture2D" uid="uid://cnobr68td0frj" path="res://art/player/Slide.png" id="10_60mlk"]
 [ext_resource type="Texture2D" uid="uid://bu5yjmbvyprti" path="res://art/player/Walk.png" id="11_i4ail"]
+[ext_resource type="AudioStream" uid="uid://b8xlcu6yig76b" path="res://art/sfx/jump.wav" id="12_jej6c"]
+[ext_resource type="AudioStream" uid="uid://bfpembgo7fp0u" path="res://art/sfx/slide.wav" id="13_f1ej7"]
+[ext_resource type="AudioStream" uid="uid://bggosbplbrg78" path="res://art/sfx/hit.wav" id="14_oprun"]
+[ext_resource type="AudioStream" uid="uid://cp0yh0ei70nck" path="res://art/sfx/grunt.wav" id="15_a8ls1"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_hdt5j"]
 atlas = ExtResource("2_3v2ag")
@@ -624,3 +628,20 @@ shape = SubResource("RectangleShape2D_d2wvv")
 [node name="DashShape" type="CollisionShape2D" parent="."]
 position = Vector2(0, 7)
 shape = SubResource("RectangleShape2D_3v2ag")
+
+[node name="JumpSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("12_jej6c")
+volume_db = -6.0
+
+[node name="SlideSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("13_f1ej7")
+volume_db = -18.0
+
+[node name="HitSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("14_oprun")
+volume_db = -6.0
+
+[node name="GruntSound" type="AudioStreamPlayer" parent="."]
+stream = ExtResource("15_a8ls1")
+volume_db = -6.0
+pitch_scale = 2.0

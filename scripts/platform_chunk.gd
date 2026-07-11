@@ -22,17 +22,17 @@ func _apply_skyscraper_sprite() -> void:
 		sprite = Sprite2D.new()
 		sprite.name = "Sprite2D"
 		add_child(sprite)
-	
+
 	var variant := randi_range(1, 6)
 	var width_key := int(chunk_width)
 	var path := "res://art/houses/%d House %d.png" % [width_key, variant]
-	
+
 	if ResourceLoader.exists(path):
 		sprite.texture = load(path)
 		sprite.position = Vector2(0.0, SKYSCRAPER_HEIGHT / 2.0)
 		sprite.scale = Vector2.ONE
 		sprite.visible = true
-		
+
 		_setup_shader_material(sprite)
 	else:
 		push_error("Base PlatformChunk: Cannot find asset path: " + path)

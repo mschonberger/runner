@@ -10,8 +10,8 @@ func _on_body_entered(body: Node) -> void:
 		var col = get_node_or_null("CollisionShape2D")
 		if col:
 			col.set_deferred("disabled", true)
-			
-		# Now perform your speed penalties safely
+
+
 		var gm := get_tree().get_first_node_in_group("game_manager") as GameManager
 		if gm != null:
 			gm.apply_speed_penalty(penalty_extra)

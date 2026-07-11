@@ -11,13 +11,13 @@ config_version=5
 [application]
 
 config/name="Runner"
-run/main_scene="uid://dx7tgfrq7ce3b"
+run/main_scene="uid://bs8fu7cknyfbg"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
-SilentWolf="*res://addons/silent_wolf/SilentWolf.gd"
+TaloManager="*res://scripts/talo_manager.gd"
 
 [display]
 
@@ -27,10 +27,6 @@ window/size/window_width_override=1280
 window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
-
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/silent_wolf/plugin.cfg")
 
 [global_group]
 

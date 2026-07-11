@@ -15,7 +15,7 @@ signal global_score_upload_completed
 @export var min_speed_floor: float = 80.0
 
 @export var post_hit_suppression_time: float = 2.5
-@export var minimum_global_score_threshold: float = 1000.0 
+@export var minimum_global_score_threshold: float = 1000.0
 var _suppression_timer: float = 0.0
 
 var current_speed: float = 0.0
@@ -25,7 +25,7 @@ var can_start: bool = true
 var player_name: String = "Guest"
 var current_score: float = 0.0
 
-# Store top 3 scores locally as fallback/cache
+
 var leaderboard: Array = []
 
 signal highscore_achieved(score_value: float)
@@ -35,13 +35,7 @@ func _ready() -> void:
 	current_speed = base_speed
 	running = false
 	can_start = true
-	
-	SilentWolf.configure({
-		"api_key": "IHMTman8NN77vl5NCcXBP2WleWoGPkWia8cefbLH",
-		"game_id": "runner1",
-		"log_level": 1
-	})
-	
+
 	_load_local_data()
 
 func _physics_process(delta: float) -> void:
@@ -69,10 +63,10 @@ func stop_running() -> void:
 	current_speed = base_speed
 
 	if current_score >= minimum_global_score_threshold:
-		can_start = false 
+		can_start = false
 		var final_score = current_score
 		highscore_achieved.emit(final_score)
-		
+
 		add_leaderboard_entry(player_name, final_score)
 	else:
 		current_score = 0.0
@@ -98,23 +92,23 @@ func get_best_score() -> float:
 
 func add_leaderboard_entry(new_player_name: String, score_value: float) -> void:
 	save_player_name(new_player_name)
-		
+
 	var clean_name = player_name.to_upper().substr(0, 8)
 	var new_entry = {"name": clean_name, "score": score_value}
-	
+
 	if qualifies_for_local(score_value):
 		leaderboard.append(new_entry)
 		leaderboard.sort_custom(func(a, b): return a["score"] > b["score"])
 		if leaderboard.size() > 3:
 			leaderboard.resize(3)
 		_save_leaderboard()
-	
+
 	_upload_global_score(int(score_value))
-	
+
 	current_score = 0.0
 	can_start = true
 
-# === DATA RETRIEVAL & STORAGE ===
+
 
 func _load_local_data() -> void:
 	leaderboard.clear()
@@ -125,14 +119,14 @@ func _load_local_data() -> void:
 		if json.parse(json_string) == OK:
 			if json.data is Array:
 				leaderboard = json.data
-	
+
 	if leaderboard.is_empty():
 		leaderboard = [
 			{"name": "MALTE", "score": 5000.0},
 			{"name": "LUCA", "score": 3000.0},
 			{"name": "MARK", "score": 2500.0}
 		]
-		
+
 	if FileAccess.file_exists("user://player_name.dat"):
 		var file = FileAccess.open("user://player_name.dat", FileAccess.READ)
 		player_name = file.get_as_text()
@@ -150,7 +144,7 @@ func save_player_name(new_name: String) -> void:
 	file.store_string(player_name)
 
 func _upload_global_score(score_to_send: int) -> void:
-	print("Uploading score to SilentWolf: ", player_name, " - ", score_to_send)
-	await SilentWolf.Scores.save_score(player_name, score_to_send).sw_save_score_complete
+	print("Uploading score to Talo: ", player_name, " - ", score_to_send)
+	await TaloManager.submit_score_to_talo(player_name, score_to_send)
 	print("Global score upload request processed.")
 	global_score_upload_completed.emit()
