@@ -13,12 +13,21 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="JumpButton" type="TouchScreenButton" parent="Layout"]
-position = Vector2(320, 0)
+position = Vector2(320, 90)
+scale = Vector2(1.011, 0.75)
 texture_normal = ExtResource("1_k8ypl")
 texture_pressed = ExtResource("1_k8ypl")
 action = "jump"
 
 [node name="DashButton" type="TouchScreenButton" parent="Layout"]
+position = Vector2(0, 90)
+scale = Vector2(1.011, 0.75)
 texture_normal = ExtResource("1_k8ypl")
 texture_pressed = ExtResource("1_k8ypl")
 action = "dash"
+
+[node name="ChangeNameButton" type="TouchScreenButton" parent="Layout"]
+scale = Vector2(2, 0.25)
+texture_normal = ExtResource("1_k8ypl")
+texture_pressed = ExtResource("1_k8ypl")
+action = "change"

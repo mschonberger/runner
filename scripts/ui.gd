@@ -50,7 +50,7 @@ func _process(delta: float) -> void:
 		if start_label != null:
 			start_label.modulate.a = (sin(blink_timer * blink_speed) + 1.0) / 2.0
 
-		if Input.is_action_just_pressed("dash"):
+		if Input.is_action_just_pressed("change"):
 			_open_name_onboarding()
 
 func _update_score_ui_display() -> void:
@@ -82,9 +82,9 @@ func _update_score_ui_display() -> void:
 
 func _setup_initial_ui_text() -> void:
 	if controls_label != null:
-		controls_label.text = "CONTROLS:\n\n[ Space ] ──── Jump\n[ Ctrl ]  ──── Slide (On Ground)\n[ Ctrl ]  ──── Dash (In Air)\n[ Tap Left Side ]  ──── Dash\n[ Tap Right Side ]  ──── Jump"
+		controls_label.text = "CONTROLS:\n\n[ Space / Tap Right Side ] Jump\n[ Ctrl / Tap Left Side] Slide (On Ground)\n[ Ctrl / Tap Left Side ] Dash (In Air)\n[ Enter / Tap Top Side ] Change Name"
 	if start_label != null:
-		start_label.text = "Push [Space] to start\nPush [Dash] to change your Name"
+		start_label.text = "Press [Jump] to start"
 
 func _build_procedural_virtual_keyboard_ui() -> void:
 	entry_panel = PanelContainer.new()
