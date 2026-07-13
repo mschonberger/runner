@@ -18,7 +18,7 @@ func _ready() -> void:
 
 func _on_animation_player_animation_finished(anim_name: String) -> void:
 	print("Animation '", anim_name, "' finished. Attempting transition to Start Screen.")
-	get_tree().change_scene_to_file("res://ui/start_screen.tscn")
+	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("jump"):
