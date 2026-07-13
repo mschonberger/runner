@@ -75,7 +75,6 @@ func fetch_top_scores(board_name: String) -> Array:
 				if entry.has("playerAlias") and entry["playerAlias"].has("identifier"):
 					name_str = entry["playerAlias"]["identifier"]
 
-
 				score_list.append({
 					"player_name": name_str,
 					"score": int(entry["score"])

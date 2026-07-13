@@ -21,6 +21,10 @@ func _on_animation_player_animation_finished(anim_name: String) -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch and event.pressed:
+		if gun_sound: gun_sound.play()
+		get_tree().change_scene_to_file("res://scenes/main.tscn")
+		return
 	if event.is_action_pressed("jump"):
 		if gun_sound: gun_sound.play()
 		get_tree().change_scene_to_file("res://scenes/main.tscn")

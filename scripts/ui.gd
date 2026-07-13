@@ -61,7 +61,7 @@ func _update_score_ui_display() -> void:
 			global_highest_score
 		]
 	else:
-		var text_output = "Score: %d\n\n== LOCAL TOP 3 ==\n" % int(gm.current_score)
+		var text_output = "Score: %d\n== Local Best ==\n" % int(gm.current_score)
 
 		var unique_local_entries: Array = []
 		var seen_local_names: Dictionary = {}
@@ -72,10 +72,10 @@ func _update_score_ui_display() -> void:
 				seen_local_names[name_key] = true
 				unique_local_entries.append(entry)
 
-		var display_limit = min(unique_local_entries.size(), 3)
+		var display_limit = min(unique_local_entries.size(), 1)
 		for i in range(display_limit):
 			var entry = unique_local_entries[i]
-			text_output += "%d. %-8s : %d\n" % [i + 1, entry["name"], int(entry["score"])]
+			text_output += "%-8s : %d\n" % [entry["name"], int(entry["score"])]
 
 		text_output += "\n" + global_leaderboard_text
 		label.text = text_output
@@ -207,13 +207,13 @@ func fetch_global_scores() -> void:
 
 		global_highest_score = int(remote_scores[0].get("score", 0))
 
-		var leaderboard_lines: Array[String] = ["== GLOBAL TOP 3 =="]
+		var leaderboard_lines: Array[String] = ["== GLOBAL TOP 5 =="]
 		var seen_global_names: Dictionary = {}
 		var rank = 1
 
 
 		for entry in remote_scores:
-			if rank > 3:
+			if rank > 5:
 				break
 
 			var p_name: String = entry.get("player_name", "ANON").to_upper().strip_edges()
@@ -229,7 +229,7 @@ func fetch_global_scores() -> void:
 		global_leaderboard_text = "\n".join(leaderboard_lines)
 	else:
 		global_highest_score = 0
-		global_leaderboard_text = "== GLOBAL TOP 3 =="
+		global_leaderboard_text = "== GLOBAL TOP 5 =="
 
 	_update_score_ui_display()
 
